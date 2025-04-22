@@ -1,41 +1,41 @@
-openai.api_key = OPENAI_API_KEY
+import asyncio
+import os
+from aiogram import Bot, Dispatcher
+from aiogram.enums import ParseMode
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import openai
+from datetime import datetime
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
+scheduler = AsyncIOScheduler()
+openai.api_key = OPENAI_API_KEY
 
-# Пример простого эхо-хендлера (можно убрать, если не нужен)
-@dp.message()
-async def echo_handler(message: Message):
-    await message.answer(f"Ты написал: {message.text}")
+scheduled_posts = {}
 
-# Функция генерации через ChatGPT
 async def generate_post():
-    resp = openai.ChatCompletion.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        messages=[{
-            "role": "user",
-            "content": (
-                "Сгенерируй короткий и полезный пост для Telegram-канала на тему личной эффективности. "
-                "Объём — до 200 символов."
-            )
-        }]
+        messages=[{"role": "user", "content": "Сгенерируй короткий и интересный пост для Telegram канала про инвестиции."}]
     )
-    return resp.choices[0].message.content
+    content = response.choices[0].message["content"]
+    scheduled_posts["09:00"] = content
+    print(f"[{datetime.now()}] Пост добавлен в план на завтра в 9:00:\n{content}")
 
-# Задача по расписанию — каждый день в 9:00 по UTC (12:00 по Москве/Oslo)
-@crontab('0 9 * * *')
-async def daily_post():
-    try:
-        text = await generate_post()
-        await bot.send_message(CHANNEL_ID, text)
-    except exceptions.TelegramAPIError as e:
-        print(f"Ошибка при отправке в канал: {e}")
+async def publish_scheduled_post():
+    content = scheduled_posts.pop("09:00", None)
+    if content:
+        # Тут позже будет отправка в канал. Сейчас просто лог:
+        print(f"[{datetime.now()}] Публикация запланированного поста:\n{content}")
 
 async def main():
-    # Убираем вебхуки и запускаем поллинг
-    await bot.delete_webhook(drop_pending_updates=True)
-    print("Бот запущен. Ожидаем расписание...")
-    while True:
-        await asyncio.sleep(3600)  # удерживаем цикл
+    scheduler.add_job(generate_post, "cron", hour=21, minute=0)
+    scheduler.add_job(publish_scheduled_post, "cron", hour=9, minute=0)
+    scheduler.start()
+    await dp.start_polling(bot)
 
-if __name__ == "__main__":
+if name == "main":
     asyncio.run(main())
