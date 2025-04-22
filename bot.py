@@ -1,9 +1,8 @@
-# bot.py
-
 import logging
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import os
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+
+# Заглушка веб-сервера, чтобы Render не засыпал
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -19,31 +18,11 @@ def run_web():
 
 threading.Thread(target=run_web).start()
 
-#Включаем логирование
-ligging.basicConfig(
+# Настройка логгирования
+logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=loogging.INFO
+    level=logging.INFO
 )
 
-#Обработчик комманды /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Привет, я бот проекта Львиные инвестиции ')
-
-#Обработчик всех сообщений
-async def echo(update^ Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Вы сказали: {update.message.text}')
-
-if __name__ = "__main__":
-    #Получаем токен из переменных окружения
-    token = os.environ.get('BOT_TOKEN')
-    if not tokn:
-        print("Ошибка: переменная окружения BOT_TOKEN не найдена!")
-        exit()
-
-    app = ApplicationBuilder().token(token)build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(ffilters.TEXT & -filters.COMMAND, echo))
-
-    print("Бот запущен...")
-    app.run_polling()
+# Обработка команды /start
+async def start(update: Update, context: Context
