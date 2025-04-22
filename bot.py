@@ -1,28 +1,20 @@
-import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import Message
+from aiogram.enums import ParseMode
+import os
 
-# Заглушка веб-сервера, чтобы Render не засыпал
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b'Bot is running')
+bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+dp = Dispatcher()
 
-def run_web():
-    server = HTTPServer(('0.0.0.0', 10000), Handler)
-    server.serve_forever()
+@dp.message()
+async def echo_handler(message: Message):
+    await message.answer(f"Ты написал: {message.text}")
 
-threading.Thread(target=run_web).start()
+async def main():
+    await dp.start_polling(bot)
 
-# Настройка логгирования
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-
-# Обработка команды /start
-async def start(update: Update, context: Context
+if __name__ == __main__:
+    asyncio.run(main())
