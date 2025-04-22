@@ -7,7 +7,7 @@ import os
 
 #Включаем логирование
 ligging.basicConfig(
-    format='%(asctime)s - %(name) - %(levelname)s - %(message)s,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=loogging.INFO
 )
 
