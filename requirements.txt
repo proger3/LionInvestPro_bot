@@ -1,5 +1,3 @@
-nginx
-
 aiogram
 openai
 python-dotenv
