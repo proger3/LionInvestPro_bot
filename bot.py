@@ -1,23 +1,35 @@
 # bot.py
 
-import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import Message
-from aiogram.enums import ParseMode
+import logging
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
 
-# Токен бота (в реальности лучше использовать переменные окружения)
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+#Включаем логирование
+ligging.basicConfig(
+    format='%(asctime)s - %(name) - %(levelname)s - %(message)s,
+    level=loogging.INFO
+)
 
-bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher()
+#Обработчик комманды /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('Привет, я бот проекта Львиные инвестиции ')
 
-@dp.message()
-async def echo_handler(message: Message):
-    await message.answer(f"Ты написал: {message.text}")
+#Обработчик всех сообщений
+async def echo(update^ Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('Вы сказали: {update.message.text}')
 
-async def main():
-    await dp.start_polling(bot)
+if __name__ = "__main__":
+    #Получаем токен из переменных окружения
+    token = os.environ.get('BOT_TOKEN')
+    if not tokn:
+        print("Ошибка: переменная окружения BOT_TOKEN не найдена!")
+        exit()
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    app = ApplicationBuilder().token(token)build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(ffilters.TEXT & -filters.COMMAND, echo))
+
+    print("Бот запущен...")
+    app.run_polling()
