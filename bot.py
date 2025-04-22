@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import openai
+import logging
 from datetime import datetime
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -32,9 +33,21 @@ async def publish_scheduled_post():
         print(f"[{datetime.now()}] Публикация запланированного поста:\n{content}")
 
 async def main():
-    scheduler.add_job(generate_post, "cron", hour=21, minute=0)
-    scheduler.add_job(publish_scheduled_post, "cron", hour=9, minute=0)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        create_and_schedule_post,
+        trigger='cron',
+        hour=9,
+        minute=0
+    )
     scheduler.start()
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
