@@ -26,8 +26,8 @@ async def create_and_schedule_post():
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Ты помощник, который пишет короткие вдохновляющие посты для Telegram-канала."},
-                {"role": "user", "content": "Напиши короткий вдохновляющий пост на русском языке."}
+                {"role": "system", "content": "Ты помощник, который пишет короткие полезные и интересные посты для Telegram-канала."},
+                {"role": "user", "content": "Напиши короткий вдохновляющий пост про инвестиции для начинающих на русском языке."}
             ],
             max_tokens=100
         )
@@ -74,6 +74,26 @@ async def main():
     scheduler.start()
 
     await dp.start_polling(bot)
+
+@dp.message(lambda message: message.text == "/getpost")
+async def handle_getpost(message: Message):
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Ты помощник, который пишет короткие вдохновляющие посты для Telegram-канала."},
+                {"role": "user", "content": "Напиши короткий вдохновляющий пост на русском языке."}
+            ],
+            max_tokens=100
+        )
+
+        post_text = response.choices[0].message.content.strip()
+        await message.answer(post_text)
+
+    except Exception as e:
+        await message.answer(f"Ошибка при генерации поста: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
