@@ -17,6 +17,31 @@ openai.api_key = OPENAI_API_KEY
 
 scheduled_posts = {}
 
+async def create_and_schedule_post():
+    logging.info("Создаю пост через ChatGPT...")
+
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Ты помощник, который пишет короткие вдохновляющие посты для Telegram-канала."},
+                {"role": "user", "content": "Напиши короткий вдохновляющий пост на русском языке."}
+            ],
+            max_tokens=100
+        )
+        post_text = response.choices[0].message.content.strip()
+
+        # Здесь можно будет заменить на отправку в канал
+        logging.info(f"Сгенерированный пост: {post_text}")
+
+        # Пример отправки себе (если хочешь видеть результат сразу):
+        # await bot.send_message(chat_id=ТВОЙ_CHAT_ID, text=post_text)
+
+    except Exception as e:
+        logging.error(f"Ошибка при генерации поста: {e}")
+        
 async def generate_post():
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
