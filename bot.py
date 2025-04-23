@@ -27,7 +27,7 @@ async def create_and_schedule_post():
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Ты помощник, который пишет короткие полезные и посты для Telegram-канала об инвестициях для начинающих."},
+                {"role": "system", "content": "Ты помощник, который пишет короткие посты для Telegram-канала об инвестициях для начинающих."},
                 {"role": "user", "content": "Напиши короткий пост про инвестиции для начинающих на русском языке."}
             ],
             max_tokens=100
