@@ -1,45 +1,43 @@
 import asyncio
-import logging
 import os
-from aiogram import Bot, Dispatcher, types
-from aiogram.enums import ParseMode
-from aiogram.types import Message
-from openai import OpenAI
+import logging
 
-# Логирование
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import Message
+from aiogram.enums import ParseMode
+from aiogram.filters import Command
+
+from openai import OpenAI  # добавлено
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # добавлено
+
 logging.basicConfig(level=logging.INFO)
 
-# Токен бота и ключ OpenAI
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Инициализация бота и клиента OpenAI
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
-client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Функция генерации поста
-async def generate_post():
+client = OpenAI(api_key=OPENAI_API_KEY)  # добавлено
+
+@dp.message(Command("getpost"))  # добавлено
+async def handle_getpost(message: Message):  # добавлено
     try:
-        response = client.chat.completions.create(
+        completion = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Ты создаешь интересные посты для Telegram-канала."},
-                {"role": "user", "content": "Сделай пост на любую полезную тему для читателей Telegram."}
+                {"role": "system", "content": "Ты пишешь пост для Telegram-канала на тему инвестиций"},
+                {"role": "user", "content": "Придумай интересный пост про инвестиции"}
             ],
-            max_tokens=300,
         )
-        return response.choices[0].message.content
+        post_text = completion.choices[0].message.content
+        await message.answer(post_text)
     except Exception as e:
-        return f"Ошибка при генерации поста: {e}"
+        await message.answer(f"Ошибка при генерации поста:\n\n{e}")
 
-# Хендлер для команды /getpost
-@dp.message(commands=["getpost"])
-async def handle_getpost(message: Message):
-    post_text = await generate_post()
-    await message.answer(post_text)
+@dp.message()
+async def echo_handler(message: Message):
+    await message.answer(f"Ты написал: {message.text}")
 
-# Запуск бота
 async def main():
     await dp.start_polling(bot)
 
