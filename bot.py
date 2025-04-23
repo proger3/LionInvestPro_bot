@@ -1,5 +1,6 @@
 import asyncio
 import os
+from aiogram.types import Message
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
