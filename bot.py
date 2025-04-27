@@ -12,13 +12,13 @@ from openai import OpenAI  # добавлено
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # добавлено
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
 client = OpenAI(api_key=OPENAI_API_KEY)  # добавлено
-
+'''
 @dp.message(Command("getpost"))  # добавлено
 async def handle_getpost(message: Message):  # добавлено
     try:
@@ -40,6 +40,6 @@ async def echo_handler(message: Message):
 
 async def main():
     await dp.start_polling(bot)
-
+'''
 if __name__ == "__main__":
     asyncio.run(main())
