@@ -7,22 +7,23 @@ from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 
-from openai import OpenAI  # добавлено
+from openai import OpenAI
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # добавлено
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
-client = OpenAI(api_key=OPENAI_API_KEY,)  # добавлено
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-@dp.message(Command("getpost"))  # добавлено
-
+@dp.message(Command("getpost"))
+async def handle_getpost(message: Message):
+    await message.answer("Я готовлю тебе пост!")
 
 async def main():
     await dp.start_polling(bot)
-    
+
 if __name__ == "__main__":
     asyncio.run(main())
