@@ -6,36 +6,51 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
+import aiohttp
 
-from openai import OpenAI
-
+# Загружаем токены
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
+# Создаем экземпляры бота и диспетчера
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
-client = OpenAI(api_key=OPENAI_API_KEY)
 
+# Функция генерации поста через OpenRouter
+async def generate_post(prompt_text):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "openai/gpt-3.5-turbo",
+        "messages": [{"role": "user", "content": prompt_text}],
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=payload) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data['choices'][0]['message']['content']
+            else:
+                error = await response.text()
+                raise Exception(f"Ошибка при запросе OpenRouter: {error}")
+
+# Обработчик команды /getpost
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
-    # await message.answer("Я готовлю тебе пост!")
     try:
-        completion = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Ты пишешь пост для Telegram-канала на тему инвестиций"},
-                {"role": "user", "content": "Придумай интересный пост про инвестиции"}
-            ],
-        )
-        post_text = completion.choices[0].message.content
+        prompt = "Сделай короткий пост для Telegram-канала на тему личной эффективности."
+        post_text = await generate_post(prompt)
         await message.answer(post_text)
     except Exception as e:
-        await message.answer(f"Ошибка при генерации поста:\n\n{e}")
+        await message.answer(f"Ошибка при генерации поста:\n\n{str(e)}")
 
-@dp.message()
-
+# Основная функция запуска бота
 async def main():
     await dp.start_polling(bot)
 
