@@ -12,5 +12,8 @@ from openai import OpenAI  # добавлено
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # добавлено
 
+async def main():
+    await dp.start_polling(bot)
+    
 if __name__ == "__main__":
     asyncio.run(main())
