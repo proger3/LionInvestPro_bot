@@ -20,7 +20,21 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
-    await message.answer("Я готовлю тебе пост!")
+    # await message.answer("Я готовлю тебе пост!")
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Ты пишешь пост для Telegram-канала на тему инвестиций"},
+                {"role": "user", "content": "Придумай интересный пост про инвестиции"}
+            ],
+        )
+        post_text = completion.choices[0].message.content
+        await message.answer(post_text)
+    except Exception as e:
+        await message.answer(f"Ошибка при генерации поста:\n\n{e}")
+
+@dp.message()
 
 async def main():
     await dp.start_polling(bot)
