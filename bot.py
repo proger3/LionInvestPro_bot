@@ -7,7 +7,26 @@ from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 import aiohttp
+import datetime
 
+# Темы по дням недели
+topics_by_day = {
+    'Monday': 'Финансовое мышление',
+    'Tuesday': 'Базовые знания и ликбез',
+    'Wednesday': 'Новости и события рынка',
+    'Thursday': 'Разборы и сравнения',
+    'Friday': 'Ошибки и страхи новичков',
+    'Saturday': 'Истории и вдохновение',
+    'Sunday': 'Пошаговые инструкции / Гайды'
+}
+
+# Определяем текущий день недели
+today = datetime.datetime.now().strftime('%A')  # например, 'Monday'
+
+# Получаем тему для сегодняшнего дня
+today_topic = topics_by_day.get(today, 'Тема не задана')
+
+print(f'Сегодня {today}, тема: {today_topic}')
 # Загружаем токены
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
