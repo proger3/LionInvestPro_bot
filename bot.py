@@ -63,7 +63,7 @@ async def generate_post(prompt_text):
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
     try:
-        prompt = "Для Telegram-канала тематики Инвестиции для новичков сделай пост на любую тему."
+        prompt = "Для Telegram-канала тематики Инвестиции для новичков сделай пост на тему {topics_by_day}"
         post_text = await generate_post(prompt)
         await message.answer(post_text)
     except Exception as e:
