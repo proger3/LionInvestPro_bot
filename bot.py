@@ -66,6 +66,9 @@ async def handle_getpost(message: Message):
         prompt = "Для Telegram-канала тематики Инвестиции для новичков сделай пост на тему {today_topic}"
         post_text = await generate_post(prompt)
         await message.answer(post_text)
+        prompt = "Прочитай текст поста {post_text} и придумай к нему заголовок (1-3 слова), отражающий суть"
+        post_text = await generate_post(prompt)
+        await message.answer("\n\n текст на картинку", post_text)
     except Exception as e:
         await message.answer(f"Ошибка при генерации поста:\n\n{str(e)}")
 
