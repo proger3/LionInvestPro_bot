@@ -77,21 +77,22 @@ async def generate_post(prompt_text):
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
     try:
-        # Шаг 1: сгенерировать пост
-        prompt = f"Для Telegram-канала тематики 'Инвестиции для новичков' сделай пост на тему '{today_topic}'."
+        # Шаг 1: сформировать пост
+        prompt = f"Для Telegram-канала тематики Инвестиции для новичков сделай пост на тему {today_topic}"
         post_text = await generate_post(prompt)
         await message.answer(post_text)
 
-        # Шаг 2: сгенерировать короткий заголовок
+        # Шаг 2: сформировать текст для картинки
         headline_prompt = (
             f"Прочитай текст ниже и придумай к нему короткий заголовок (1-3 слова), отражающий суть. "
-            f"Пиши только заголовок, без кавычек и пояснений:\n\n{post_text}"
+            f"Пиши только заголовок, без кавычек и пояснений.\n\n{post_text}"
         )
-        raw_headline = await generate_post(headline_prompt)
-        clean_headline = remove_emojis(raw_headline.strip())
-        await message.answer(f"<b>{clean_headline}</b>")
-        # После генерации headline:
+        headline = await generate_post(headline_prompt)
+
+        # Шаг 3: создать изображение с этим заголовком
         image_url = generate_image_with_text(headline.strip())
+
+        # Шаг 4: отправить изображение
         await message.answer_photo(photo=image_url, caption=f"<b>{headline.strip()}</b>")
 
     except Exception as e:
