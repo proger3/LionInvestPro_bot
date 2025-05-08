@@ -8,7 +8,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from image_generator import generate_image_text
+from image_generator import generate_image_with_text
 import re
 
 # Темы по дням недели
