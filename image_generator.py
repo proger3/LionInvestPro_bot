@@ -1,41 +1,38 @@
-import replicate
+# image_generator.py
+
 import os
 import random
-from PIL import Image
-import io
+import replicate
 
-# Установи свой API-ключ
-os.environ["REPLICATE_API_TOKEN"] = "your_replicate_api_token"
+# Папка с изображениями на GitHub
+BACKGROUND_DIR = "backgrounds"  # локальная папка или путь к скачанным фонам
+REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 
-# Путь к папке с фоновыми изображениями
-backgrounds_folder = "./backgrounds"
+# Модель для генерации текста на изображении (можно заменить на другую)
+MODEL_NAME = "lucataco/vision-text-overlay"
 
-# Получение списка изображений
-background_images = [f for f in os.listdir(backgrounds_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
+# Функция генерации изображения с текстом
+def generate_image_with_text(text):
+    # Случайное изображение из папки
+    image_files = os.listdir(BACKGROUND_DIR)
+    if not image_files:
+        raise Exception("Фоновые изображения не найдены в папке.")
+    selected_image = random.choice(image_files)
+    image_path = os.path.join(BACKGROUND_DIR, selected_image)
 
-# Выбор случайного изображения
-selected_image = random.choice(background_images)
-image_path = os.path.join(backgrounds_folder, selected_image)
+    with open(image_path, "rb") as f:
+        image_data = f.read()
 
-# Открытие изображения
-with open(image_path, "rb") as img_file:
-    image_bytes = img_file.read()
-
-# Заголовок, который нужно разместить
-headline = "Финансовая свобода"
-
-# Инициализация клиента Replicate
-client = replicate.Client()
-
-# Запуск модели Recraft V3
-output = client.run(
-    "recraft-ai/recraft-v3",
-    input={
-        "image": image_bytes,
-        "prompt": headline
-    }
-)
-
-# Сохранение результата
-output_image_url = output["image"]
-print(f"Сгенерированное изображение доступно по ссылке: {output_image_url}")
+    # Отправка запроса в Replicate
+    output = replicate.run(
+        f"{MODEL_NAME}",
+        input={
+            "image": image_data,
+            "text": text,
+            "text_color": "white",
+            "outline_color": "black",
+            "font_size": 48,
+            "gravity": "center"  # Можно настроить: "north", "south", "center", etc.
+        }
+    )
+    return output  # URL сгенерированного изображения
