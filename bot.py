@@ -90,6 +90,9 @@ async def handle_getpost(message: Message):
         raw_headline = await generate_post(headline_prompt)
         clean_headline = remove_emojis(raw_headline.strip())
         await message.answer(f"<b>{clean_headline}</b>")
+        # После генерации headline:
+        image_url = generate_image_with_text(headline.strip())
+        await message.answer_photo(photo=image_url, caption=f"<b>{headline.strip()}</b>")
 
     except Exception as e:
         await message.answer(f"Ошибка при генерации поста:\n\n{str(e)}")
