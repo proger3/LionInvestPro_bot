@@ -80,6 +80,10 @@ async def handle_getpost(message: Message):
         # Шаг 1: сформировать пост
         prompt = f"Для Telegram-канала тематики Инвестиции для новичков сделай пост на тему {today_topic}"
         post_text = await generate_post(prompt)
+
+        # Проверка, если вдруг вернулся байтовый тип
+        post_text = post_text.decode() if isinstance(post_text, bytes) else post_text
+
         await message.answer(post_text)
 
         # Шаг 2: сформировать текст для картинки
@@ -89,11 +93,11 @@ async def handle_getpost(message: Message):
         )
         headline = await generate_post(headline_prompt)
 
-        # Шаг 3: создать изображение с этим заголовком
-        image_url = generate_image_with_text(headline.strip())
+        # Проверка, если вдруг вернулся байтовый тип
+        headline = headline.decode() if isinstance(headline, bytes) else headline
 
-        # Шаг 4: отправить изображение
-        await message.answer_photo(photo=image_url, caption=f"<b>{headline.strip()}</b>")
+        # Отправляем заголовок (корректно закрываем <b>)
+        await message.answer(f"<b>{headline.strip()}</b>")
 
     except Exception as e:
         await message.answer(f"Ошибка при генерации поста:\n\n{str(e)}")
