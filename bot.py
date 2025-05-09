@@ -14,7 +14,7 @@ from aiogram.filters import Command
 import re
 
 # Темы по дням недели
-background_urls = {
+background_urls = [
     "https://disk.yandex.ru/i/2Xm6oBM2Zwww9A",
     "https://disk.yandex.ru/i/95YgmR-nwVl0aA",
     "https://disk.yandex.ru/i/wfxrh1dGXVSZhA",
@@ -46,7 +46,7 @@ background_urls = {
     "https://disk.yandex.ru/i/QjkXiQ5G76chmQ",
     "https://disk.yandex.ru/i/ZxHXV-K6fFTtKQ",
     "https://disk.yandex.ru/i/JzKzVWa-ofCgRQ"
-}
+]
 topics_by_day = {
     'Monday': 'Финансовое мышление',
     'Tuesday': 'Базовые знания и ликбез',
