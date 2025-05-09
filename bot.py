@@ -4,6 +4,8 @@ import os
 import logging
 import datetime
 import aiohttp
+import replicate
+from io import BytesIO
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
@@ -106,6 +108,29 @@ async def generate_post(prompt_text):
                 error = await response.text()
                 raise Exception(f"Ошибка при запросе OpenRouter: {error}")
 
+async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
+    output = replicate.run(
+        "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
+        input={
+            "image": image_url,
+            "prompt": headline,
+            "font": "Anton",
+            "text_color": "white",
+            "outline_color": "black"
+        }
+    )
+
+    # Получаем ссылку на сгенерированное изображение
+    result_url = output["image"] if isinstance(output, dict) else output
+
+    # Загружаем изображение по этой ссылке
+    async with aiohttp.ClientSession() as session:
+        async with session.get(result_url) as resp:
+            if resp.status == 200:
+                return BytesIO(await resp.read())
+            else:
+                raise Exception(f"Ошибка загрузки изображения: {resp.status}")
+                
 # Обработчик команды /getpost
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
