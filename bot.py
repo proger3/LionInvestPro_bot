@@ -1,3 +1,4 @@
+import random
 import asyncio
 import os
 import logging
@@ -11,6 +12,39 @@ from aiogram.filters import Command
 import re
 
 # Темы по дням недели
+background_urls = {
+    https://disk.yandex.ru/i/2Xm6oBM2Zwww9A,
+    https://disk.yandex.ru/i/95YgmR-nwVl0aA,
+    https://disk.yandex.ru/i/wfxrh1dGXVSZhA,
+    https://disk.yandex.ru/i/eF8sPxfN7zK8_w,
+    https://disk.yandex.ru/i/VwI1szpo2XD_Ng,
+    https://disk.yandex.ru/i/WX4MUIc7OsAR5g,
+    https://disk.yandex.ru/i/ClReyWAp8SbzeA,
+    https://disk.yandex.ru/i/XYUEUflKtyKysw,
+    https://disk.yandex.ru/i/tCL_01Yp3R7SQw,
+    https://disk.yandex.ru/i/9HxrIVUhxrg9pQ,   
+    https://disk.yandex.ru/i/-y-Rz_p9QGn8-g,
+    https://disk.yandex.ru/i/kNNwbfINfEi3UQ,
+    https://disk.yandex.ru/i/LSdlgoOYss3tIg,
+    https://disk.yandex.ru/i/hZPj3OoIN_PI7w,
+    https://disk.yandex.ru/i/P2OupYx_sEBmEQ,
+    https://disk.yandex.ru/i/JSbEfkQK_ih5iQ,
+    https://disk.yandex.ru/i/cs-lkHjf2rOQ9g,
+    https://disk.yandex.ru/i/GrfCtYaAvOMR8w,
+    https://disk.yandex.ru/i/xsE6Fstw8xoK_g,
+    https://disk.yandex.ru/i/ZOqskY_okJaSNw,
+    https://disk.yandex.ru/i/S3wox7U1o9yw6A,
+    https://disk.yandex.ru/i/gnRc4lbGtrA7gA,
+    https://disk.yandex.ru/i/pufipYa9RjPeTQ,
+    https://disk.yandex.ru/i/XQbURiAllj0cVw,
+    https://disk.yandex.ru/i/eKKHTF_vPlQblg,
+    https://disk.yandex.ru/i/EYgQv2wNH7b85Q,
+    https://disk.yandex.ru/i/lydkWdj7OMqEGw,
+    https://disk.yandex.ru/i/fx9TQbZgTGZz5Q,
+    https://disk.yandex.ru/i/QjkXiQ5G76chmQ,
+    https://disk.yandex.ru/i/ZxHXV-K6fFTtKQ,
+    https://disk.yandex.ru/i/JzKzVWa-ofCgRQ
+}
 topics_by_day = {
     'Monday': 'Финансовое мышление',
     'Tuesday': 'Базовые знания и ликбез',
@@ -90,15 +124,15 @@ async def handle_getpost(message: Message):
         clean_headline = headline.strip()
         await message.answer(f"<b>{clean_headline}</b>")
 
-        # Шаг 3: выбрать случайную картинку из /backgrounds
-        import random
-        from pathlib import Path
-        background_dir = Path("backgrounds")
-        images = list(background_dir.glob("*.jpg")) + list(background_dir.glob("*.png"))
-        if not images:
-            await message.answer("Нет доступных фоновых изображений.")
-            return
-        selected_image_path = random.choice(images)
+         Шаг 3: выбрать случайную картинку из
+       # from pathlib import Path
+       # background_dir = Path("backgrounds")
+       # images = list(background_dir.glob("*.jpg")) + list(background_dir.glob("*.png"))
+        #if not images:
+        #    await message.answer("Нет доступных фоновых изображений.")
+        #    return
+        #selected_image_path = random.choice(images)
+        background_url = random.choice(background_urls)
 
         # Шаг 4: отправить запрос к Replicate
         from replicate import Client
@@ -106,8 +140,8 @@ async def handle_getpost(message: Message):
 
         replicate_client = Client(api_token=os.getenv("REPLICATE_API_TOKEN"))
 
-        with open(selected_image_path, "rb") as img_file:
-            img_bytes = img_file.read()
+        #with open(selected_image_path, "rb") as img_file:
+        #    img_bytes = img_file.read()
 
         # Замените на нужную модель, если используете другую
         output = replicate_client.run(
