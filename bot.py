@@ -137,19 +137,19 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
     try:
-        # Генерация текста
+        # 1. Генерация текста поста
         post_text = await generate_post(f"Создай пост на тему: {today_topic}")
         await message.answer(post_text)
 
-        # Генерация заголовка
+        # 2. Генерация заголовка
         headline = await generate_post(f"Создай заголовок (1-3 слова) для: {post_text}")
         headline = remove_emojis(headline).strip('"').strip()
         await message.answer(f"<b>Заголовок:</b> {headline}")
 
-        # Выбор фона
+        # 3. Выбор фона
         background_url = random.choice(background_urls)
         
-        # Создание изображения
+        # 4. Создание изображения
         image_bytes = await generate_image_with_text(background_url, headline)
         try:
             await message.answer_photo(
@@ -160,8 +160,8 @@ async def handle_getpost(message: Message):
             image_bytes.close()
 
     except Exception as e:
-    logger.error(f"Ошибка: {str(e)}", exc_info=True)
-    await message.answer(f"⚠️ Ошибка при создании изображения:\n{str(e)[:200]}")
+        logger.error(f"Ошибка: {str(e)}", exc_info=True)  # ← 8 пробелов отступа
+        await message.answer(f"⚠️ Ошибка при создании поста:\n{str(e)[:200]}")
 
 # Команда /test
 @dp.message(Command("test"))
