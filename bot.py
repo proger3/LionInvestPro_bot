@@ -26,9 +26,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 if not BOT_TOKEN or not OPENROUTER_API_KEY:
     raise ValueError("Не заданы обязательные переменные окружения!")
 
-# Инициализация бота с явным указанием сессии
-session = aiohttp.ClientSession()
-bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML, session=session)
+# Инициализация бота (сессия будет создана при запуске)
+bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
 # Темы по дням недели
@@ -42,7 +41,7 @@ topics_by_day = {
     'Sunday': 'Пошаговые инструкции / Гайды'
 }
 
-# Ссылки на фоновые изображения (ЗАМЕНИТЕ НА РЕАЛЬНЫЕ ССЫЛКИ!)
+# Ссылки на фоновые изображения
 
 # Ссылки на фоновые изображения (замените на свои рабочие URL)
 background_urls = [
@@ -178,21 +177,23 @@ async def handle_getpost(message: Message):
 async def test_cmd(message: Message):
     await message.answer("✅ Бот работает!")
 
-# Управление сессиями
+# Управление запуском
 async def on_startup():
     await bot.delete_webhook(drop_pending_updates=True)
     logger.info("Bot started")
 
 async def on_shutdown():
-    await bot.session.close()
+    session = await bot.get_session()
+    await session.close()
     logger.info("Bot stopped gracefully")
 
 async def main():
+    # Для Render: ждем завершения старых процессов
+    await asyncio.sleep(5)
+    
     try:
         await on_startup()
         await dp.start_polling(bot)
-    except asyncio.CancelledError:
-        pass
     except Exception as e:
         logger.critical(f"Fatal error: {e}", exc_info=True)
     finally:
