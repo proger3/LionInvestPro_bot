@@ -191,7 +191,17 @@ async def test_replicate(message: Message):
         await message.answer(f"Replicate работает: {str(output)[:100]}")
     except Exception as e:
         await message.answer(f"Replicate error: {str(e)}")
-        
+
+@dp.message(Command("debug"))
+async def cmd_debug(message: Message):
+    session = await bot.get_session()
+    status = "🟢 Активна" if not session._closed else "🔴 Закрыта"
+    await message.answer(
+        f"Статус сессии: {status}\n"
+        f"Время запуска: {datetime.now()}\n"
+        f"Версия бота: 2.0"
+    )
+    
 # Запуск бота
 async def on_startup():
     await bot.delete_webhook(drop_pending_updates=True)
@@ -209,17 +219,18 @@ async def on_shutdown(dispatcher: Dispatcher):
 
 # 2. Модифицируйте функцию main() следующим образом:
 async def main():
-    try:
-        # Удаляем старые webhook (если были)
-        await bot.delete_webhook(drop_pending_updates=True)
+    import time
+    time.sleep(10)  # Ждём завершения старых процессов
+    
+    await bot.delete_webhook(drop_pending_updates=True)
+    
+    # Добавляем проверку активных сессий
+    session = await bot.get_session()
+    if session._closed:  # Если сессия уже закрыта
+        await session.close()  # Принудительно освобождаем
         
-        logger.info("Starting bot...")
-        await dp.start_polling(bot)
-        
-    finally:
-        # Гарантированная очистка при любом завершении
-        await on_shutdown(dp)
-
+    logger.info("Fresh bot instance starting...")
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 # 3. Измените блок запуска (в самом конце файла):
 if __name__ == "__main__":
     try:
