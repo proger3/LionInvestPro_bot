@@ -135,15 +135,18 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        output = await replicate.run(
-            "fofr/eyecandy@sha256:8a7b9b6588d94a9b3e738a6a5c065b6f6e1e0b9c9b3e1e0b9c9b3e1e0b9c9b3e",  # Актуальная версия
+        # Используем ТОЧНУЮ версию модели
+        model_version = "fofr/eyecandy@7a6735f7d26388d8bef8a0aa066237873d65a1a7"
+        
+        output = replicate.run(
+            model_version,
             input={
                 "image": image_url,
                 "prompt": headline,
                 "font": "Anton",
                 "text_color": "white",
                 "outline_color": "black",
-                "font_size": 60  # Добавьте этот параметр
+                "font_size": 60  # Опциональный параметр
             }
         )
         
@@ -161,6 +164,21 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
         logger.error(f"Ошибка генерации изображения: {str(e)}", exc_info=True)
         raise
 
+@dp.message(Command("test_model"))
+async def test_model(message: Message):
+    try:
+        test_url = "https://i.ibb.co/bjDyM39N/1.png"  # Ваша тестовая картинка
+        model_version = "fofr/eyecandy@7a6735f7d26388d8bef8a0aa066237873d65a1a7"
+        
+        output = replicate.run(
+            model_version,
+            input={"image": test_url, "prompt": "Test"}
+        )
+        
+        await message.answer(f"✅ Модель работает! Результат: {output}")
+    except Exception as e:
+        await message.answer(f"❌ Ошибка: {str(e)}")
+        
 # Команда /getpost
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
