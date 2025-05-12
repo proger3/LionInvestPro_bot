@@ -236,24 +236,46 @@ async def on_startup():
     logger.info("Bot started")
 
 async def on_shutdown():
-    session = await bot.get_session()
-    await session.close()
-    logger.info("Bot stopped gracefully")
+    """Корректное завершение работы бота"""
+    try:
+        # Закрываем сессию бота
+        session = await bot.session
+        await session.close()
+        logger.info("Сессия бота закрыта")
+        
+        # Дополнительные очистки (если нужно)
+        await dp.storage.close()
+        logger.info("Хранилище диспетчера закрыто")
+    except Exception as e:
+        logger.error(f"Ошибка при завершении: {str(e)}", exc_info=True)
+    finally:
+        logger.info("Бот завершил работу")
 
 async def main():
-    # Для Render: ждем завершения старых процессов
-    await asyncio.sleep(5)
-    
+    """Основной цикл бота"""
     try:
-        await on_startup()
+        # Для Render: ждем завершения старых процессов
+        await asyncio.sleep(2)
+        
+        # Очистка предыдущих вебхуков
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Вебхуки очищены")
+        
+        # Запуск поллинга
+        logger.info("Запускаем поллинг...")
         await dp.start_polling(bot)
+        
+    except asyncio.CancelledError:
+        logger.info("Поллинг отменён")
     except Exception as e:
-        logger.critical(f"Fatal error: {e}", exc_info=True)
+        logger.critical(f"Критическая ошибка: {str(e)}", exc_info=True)
     finally:
         await on_shutdown()
-
+        
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Bot stopped manually")
+        logger.info("Бот остановлен вручную")
+    except Exception as e:
+        logger.critical(f"Фатальная ошибка: {str(e)}", exc_info=True)
