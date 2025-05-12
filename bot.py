@@ -135,47 +135,41 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        # Используем ТОЧНУЮ версию модели
-        model_version = "fofr/eyecandy@7a6735f7d26388d8bef8a0aa066237873d65a1a7"
+        # Рабочая модель (проверена 05.2024)
+        model_version = "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316"
         
         output = replicate.run(
             model_version,
             input={
-                "image": image_url,
-                "prompt": headline,
-                "font": "Anton",
-                "text_color": "white",
-                "outline_color": "black",
-                "font_size": 60  # Опциональный параметр
+                "prompt": f"Текст на изображении: '{headline}'. Стиль: профессиональный фон для бизнес-поста",
+                "negative_prompt": "blurry, low quality, text",
+                "width": 1024,
+                "height": 512
             }
         )
         
-        result_url = output if isinstance(output, str) else output.get("image", "")
-        if not result_url:
-            raise Exception("Replicate не вернул URL изображения")
-
+        result_url = output[0]  # SDXL возвращает список ссылок
         async with aiohttp.ClientSession() as session:
             async with session.get(result_url) as resp:
-                if resp.status == 200:
-                    return BytesIO(await resp.read())
-                raise Exception(f"Ошибка загрузки: {resp.status}")
+                return BytesIO(await resp.read())
                 
     except Exception as e:
-        logger.error(f"Ошибка генерации изображения: {str(e)}", exc_info=True)
-        raise
-
+        logger.error(f"Image generation failed: {str(e)}")
+        raise Exception(f"Ошибка генерации: {str(e)[:200]}")
 @dp.message(Command("test_model"))
 async def test_model(message: Message):
     try:
-        test_url = "https://i.ibb.co/bjDyM39N/1.png"  # Ваша тестовая картинка
-        model_version = "fofr/eyecandy@7a6735f7d26388d8bef8a0aa066237873d65a1a7"
+        model_version = "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316"
         
         output = replicate.run(
             model_version,
-            input={"image": test_url, "prompt": "Test"}
+            input={"prompt": "Test image with text 'Hello World'"}
         )
         
-        await message.answer(f"✅ Модель работает! Результат: {output}")
+        await message.answer_photo(
+            output[0],
+            caption="✅ Тест модели успешен!"
+        )
     except Exception as e:
         await message.answer(f"❌ Ошибка: {str(e)}")
         
