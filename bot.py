@@ -11,7 +11,15 @@ from aiogram.types import Message
 from aiogram.enums import ParseMode   
 from aiogram.filters import Command
 import re
+# Кэшируем результаты проверки
+from functools import lru_cache
 
+@lru_cache(maxsize=32)
+async def get_image(url: str) -> bytes:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            return await resp.read()
+            
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
@@ -45,40 +53,53 @@ topics_by_day = {
 
 # Ссылки на фоновые изображения (замените на свои рабочие URL)
 background_urls = [
-    "https://ibb.co/ym7McRjg"
-    "https://ibb.co/CprPmCj3"
-    "https://ibb.co/hJy3m7NX"
-    "https://ibb.co/HL76BMgw"
-    "https://ibb.co/bMX2q315"
-    "https://ibb.co/ZpXd11tV"
-    "https://ibb.co/tT9r0yR4"
-    "https://ibb.co/1tZZbNSH"
-    "https://ibb.co/LXQ0Mgd0"
-    "https://ibb.co/DgR2zStR"
-    "https://ibb.co/zWGDt8zt"
-    "https://ibb.co/Rkv96qcW"
-    "https://ibb.co/B56cDhP5"
-    "https://ibb.co/RTB5kjGy"
-    "https://ibb.co/7ttwzhWp"
-    "https://ibb.co/xSmg6WF3"
-    "https://ibb.co/XZQrn7mn"
-    "https://ibb.co/f7zYZWL"
-    "https://ibb.co/gZ4nx160"
-    "https://ibb.co/60KmPmj3"
-    "https://ibb.co/MDvCYkjf"
-    "https://ibb.co/0pfKnLp6"
-    "https://ibb.co/N644PMKF"
-    "https://ibb.co/wFVXR0y6"
-    "https://ibb.co/PXXSSyZ"
-    "https://ibb.co/5WdKqWws"
-    "https://ibb.co/G4ZVjksQ"
-    "https://ibb.co/vxgy5bcq"
-    "https://ibb.co/kgjWdXdk"
-    "https://ibb.co/tpR25ppn"
-    "https://ibb.co/397tnPQ8"
+    "https://i.ibb.co/bjDyM39N/1.png"
+    "https://i.ibb.co/gbn4mq0L/2.png"
+    "https://i.ibb.co/dwr85Wvb/3.png"
+    "https://i.ibb.co/0pqTmWJ4/4.png"
+    "https://i.ibb.co/Xrt3N4Xx/5.png"
+    "https://i.ibb.co/NdCxnnQs/6.png"
+    "https://i.ibb.co/7dqm37hX/7.png"
+    "https://i.ibb.co/sdjjt4BL/8.png"
+    "https://i.ibb.co/C3Jwq9Kw/9.png"
+    "https://i.ibb.co/847ZNS07/10.png"
+    "https://i.ibb.co/35BQPfnP/11.png"
+    "https://i.ibb.co/Kp0XsJWH/12.png"
+    "https://i.ibb.co/PvWFp2Yv/13.png"
+    "https://i.ibb.co/jkWpPJ9R/14.png"
+    "https://i.ibb.co/v447B9Pd/14-31.png"
+    "https://i.ibb.co/Y7Ddhm0b/15.png"
+    "https://i.ibb.co/d0TwNPnN/16.png"
+    "https://i.ibb.co/XTrZ6PM/17.png"
+    "https://i.ibb.co/5hK7PD2Q/18.png"
+    "https://i.ibb.co/pjHxzxYt/19.png"
+    "https://i.ibb.co/jvNrckxz/20.png"
+    "https://i.ibb.co/RGCNgKGs/21.png"
+    "https://i.ibb.co/MDXX4m7g/22.png"
+    "https://i.ibb.co/fzf521M0/23.png"
+    "https://i.ibb.co/bwwffVg/24.png"
+    "https://i.ibb.co/bgxbpgDN/25.png"
+    "https://i.ibb.co/tT0b5cZp/26.png"
+    "https://i.ibb.co/fYB6RbXF/27.png"
+    "https://i.ibb.co/1f1wSTSh/28.png"
+    "https://i.ibb.co/r29pJ22q/29.png"
+    "https://i.ibb.co/1tLHk4jp/30.png"
 ]
 
-
+#Проверка правильности ссылки на фотку
+async def validate_images():
+    broken = []
+    async with aiohttp.ClientSession() as session:
+        for url in background_urls:
+            try:
+                async with session.head(url) as resp:
+                    if resp.status != 200:
+                        broken.append(url)
+            except:
+                broken.append(url)
+    if broken:
+        logger.warning(f"Broken images: {broken}")
+        
 # Удаление эмодзи
 def remove_emojis(text):
     emoji_pattern = re.compile("["
