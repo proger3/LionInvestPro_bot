@@ -205,7 +205,12 @@ async def test_image(message: Message):
 
 # Запуск бота
 async def main():
-    logger.info("Starting bot...")
+     logger.info("Starting bot...")
+    
+    # Удаляем старые webhooks (если были)
+    await bot.delete_webhook(drop_pending_updates=True)
+    
+    # Запускаем polling
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
