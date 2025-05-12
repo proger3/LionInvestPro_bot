@@ -197,9 +197,34 @@ async def on_startup():
     await bot.delete_webhook(drop_pending_updates=True)
     logger.info("Бот запущен")
 
-async def main():
-    await on_startup()
-    await dp.start_polling(bot)
+# 1. Добавьте этот код ПОСЛЕ создания диспетчера (dp), но ПЕРЕД функцией main()
+from aiogram import Dispatcher
 
+async def on_shutdown(dispatcher: Dispatcher):
+    """Очистка ресурсов при завершении работы"""
+    await dispatcher.storage.close()
+    await dispatcher.storage.wait_closed()
+    await bot.session.close()
+    logger.info("Bot shutdown completed")
+
+# 2. Модифицируйте функцию main() следующим образом:
+async def main():
+    try:
+        # Удаляем старые webhook (если были)
+        await bot.delete_webhook(drop_pending_updates=True)
+        
+        logger.info("Starting bot...")
+        await dp.start_polling(bot)
+        
+    finally:
+        # Гарантированная очистка при любом завершении
+        await on_shutdown(dp)
+
+# 3. Измените блок запуска (в самом конце файла):
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot stopped manually")
+    except Exception as e:
+        logger.critical(f"Fatal error: {e}", exc_info=True)
