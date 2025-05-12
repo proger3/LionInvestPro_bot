@@ -121,7 +121,7 @@ async def generate_post(prompt_text):
     )
 '''
     # Получаем ссылку на сгенерированное изображение
-    result_url = output["image"] if isinstance(output, dict) else output
+   # result_url = output["image"] if isinstance(output, dict) else output
 
     # Загружаем изображение по этой ссылке
     async with aiohttp.ClientSession() as session:
