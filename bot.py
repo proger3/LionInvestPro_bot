@@ -107,8 +107,8 @@ async def generate_post(prompt_text):
             else:
                 error = await response.text()
                 raise Exception(f"Ошибка при запросе OpenRouter: {error}")
-
-async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
+'''
+ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     output = replicate.run(
         "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
         input={
@@ -119,7 +119,7 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
             "outline_color": "black"
         }
     )
-
+'''
     # Получаем ссылку на сгенерированное изображение
     result_url = output["image"] if isinstance(output, dict) else output
 
@@ -154,10 +154,10 @@ async def handle_getpost(message: Message):
         background_url = random.choice(background_urls)
 
         # Шаг 4: создать изображение с текстом
-        image_bytes = await generate_image_with_text(headline, background_url)
+      #  image_bytes = await generate_image_with_text(headline, background_url)
 
         # Шаг 5: отправить изображение
-        await message.answer_photo(types.InputFile(image_bytes, filename="poster.jpg"))
+      #  await message.answer_photo(types.InputFile(image_bytes, filename="poster.jpg"))
 
     except Exception as e:
         await message.answer(f"Ошибка при генерации поста:\n\n{str(e)}")
