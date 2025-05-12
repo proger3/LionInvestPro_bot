@@ -13,7 +13,30 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command
 import re
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # Темы по дням недели
+topics_by_day = {
+    'Monday': 'Финансовое мышление',
+    'Tuesday': 'Базовые знания и ликбез',
+    'Wednesday': 'Новости и события рынка',
+    'Thursday': 'Разборы и сравнения',
+    'Friday': 'Ошибки и страхи новичков',
+    'Saturday': 'Истории и вдохновение',
+    'Sunday': 'Пошаговые инструкции / Гайды'
+}
+
+# Определяем текущий день недели и тему
+today = datetime.datetime.now().strftime('%A')
+today_topic = topics_by_day.get(today, 'Тема не задана')
+logger.info(f'Сегодня {today}, тема: {today_topic}')
+
+# Ссылки на фоновые изображения (замените на свои рабочие URL)
 background_urls = [
     "https://disk.yandex.ru/i/2Xm6oBM2Zwww9A",
     "https://disk.yandex.ru/i/95YgmR-nwVl0aA",
@@ -47,33 +70,19 @@ background_urls = [
     "https://disk.yandex.ru/i/ZxHXV-K6fFTtKQ",
     "https://disk.yandex.ru/i/JzKzVWa-ofCgRQ"
 ]
-topics_by_day = {
-    'Monday': 'Финансовое мышление',
-    'Tuesday': 'Базовые знания и ликбез',
-    'Wednesday': 'Новости и события рынка',
-    'Thursday': 'Разборы и сравнения',
-    'Friday': 'Ошибки и страхи новичков',
-    'Saturday': 'Истории и вдохновение',
-    'Sunday': 'Пошаговые инструкции / Гайды'
-}
 
-# Определяем текущий день недели и тему
-today = datetime.datetime.now().strftime('%A')
-today_topic = topics_by_day.get(today, 'Тема не задана')
-print(f'Сегодня {today}, тема: {today_topic}')
-
-# Загружаем токены
+# Загружаем токены из переменных окружения
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
+if not BOT_TOKEN or not OPENROUTER_API_KEY:
+    raise ValueError("Не заданы обязательные переменные окружения!")
 
-# Создаем экземпляры бота и диспетчера
+# Инициализация бота и диспетчера
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
-# Удаление эмодзи из строки
+# Удаление эмодзи из текста
 def remove_emojis(text):
     emoji_pattern = re.compile(
         "["
@@ -87,7 +96,7 @@ def remove_emojis(text):
     )
     return emoji_pattern.sub(r'', text)
 
-# Функция генерации текста через OpenRouter
+# Генерация текста поста через OpenRouter
 async def generate_post(prompt_text):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -99,71 +108,104 @@ async def generate_post(prompt_text):
         "messages": [{"role": "user", "content": prompt_text}],
     }
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=headers, json=payload) as response:
-            if response.status == 200:
-                data = await response.json()
-                return data['choices'][0]['message']['content']
-            else:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data['choices'][0]['message']['content']
                 error = await response.text()
-                raise Exception(f"Ошибка при запросе OpenRouter: {error}")
-'''
- async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
-    output = replicate.run(
-        "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
-        input={
-            "image": image_url,
-            "prompt": headline,
-            "font": "Anton",
-            "text_color": "white",
-            "outline_color": "black"
-        }
-    )
-'''
-    # Получаем ссылку на сгенерированное изображение
-   # result_url = output["image"] if isinstance(output, dict) else output
+                logger.error(f"OpenRouter error: {error}")
+                raise Exception(f"Ошибка OpenRouter: {response.status}")
+    except Exception as e:
+        logger.error(f"Error in generate_post: {str(e)}", exc_info=True)
+        raise
 
-    # Загружаем изображение по этой ссылке
-    async with aiohttp.ClientSession() as session:
-        async with session.get(result_url) as resp:
-            if resp.status == 200:
-                return BytesIO(await resp.read())
-            else:
-                raise Exception(f"Ошибка загрузки изображения: {resp.status}")
+# Генерация изображения с текстом
+async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
+    try:
+        logger.info(f"Generating image with text: {headline[:30]}...")
+        
+        output = replicate.run(
+            "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
+            input={
+                "image": image_url,
+                "prompt": headline,
+                "font": "Anton",
+                "text_color": "white",
+                "outline_color": "black"
+            }
+        )
+        
+        result_url = output if isinstance(output, str) else output.get("image", "")
+        if not result_url:
+            raise Exception("Replicate не вернул URL изображения")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(result_url) as resp:
+                if resp.status == 200:
+                    return BytesIO(await resp.read())
+                raise Exception(f"Ошибка загрузки: {resp.status}")
                 
+    except Exception as e:
+        logger.error(f"Error in generate_image_with_text: {str(e)}", exc_info=True)
+        raise
+
 # Обработчик команды /getpost
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
     try:
-        # Шаг 1: сформировать пост
-        prompt = f"Для Telegram-канала тематики Инвестиции для новичков сделай пост на тему {today_topic}"
-        post_text = await generate_post(prompt)
+        # 1. Генерация текста поста
+        logger.info("Generating post text...")
+        post_text = await generate_post(f"Создай пост для Telegram на тему: {today_topic}. Пиши интересно и понятно.")
         await message.answer(post_text)
 
-        # Шаг 2: сформировать короткий заголовок
-        headline_prompt = (
-            f"Прочитай текст ниже и придумай к нему короткий заголовок (1-3 слова), отражающий суть. "
-            f"Пиши только заголовок, без кавычек и пояснений.\n\n{post_text}"
+        # 2. Создание заголовка
+        logger.info("Generating headline...")
+        headline = await generate_post(
+            f"Придумай короткий (1-3 слова) броский заголовок для этого поста:\n\n{post_text}\n\n"
+            "Пиши только заголовок без кавычек и пояснений."
         )
-        headline = await generate_post(headline_prompt)
-        headline = headline.strip()
+        headline = remove_emojis(headline).strip('"').strip()
+        await message.answer(f"<b>Заголовок:</b> {headline}")
 
-        await message.answer(f"<b>{headline}</b>")
-
-        # Шаг 3: выбрать случайный фон
+        # 3. Выбор случайного фона
         background_url = random.choice(background_urls)
-
-        # Шаг 4: создать изображение с текстом
-      #  image_bytes = await generate_image_with_text(headline, background_url)
-
-        # Шаг 5: отправить изображение
-      #  await message.answer_photo(types.InputFile(image_bytes, filename="poster.jpg"))
+        logger.info(f"Selected background: {background_url}")
+        
+        # 4. Генерация и отправка изображения
+        logger.info("Generating final image...")
+        image_bytes = await generate_image_with_text(background_url, headline)
+        
+        try:
+            await message.answer_photo(
+                types.InputFile(image_bytes, filename="post.jpg"),
+                caption=headline
+            )
+        finally:
+            image_bytes.close()
 
     except Exception as e:
-        await message.answer(f"Ошибка при генерации поста:\n\n{str(e)}")
+        logger.error(f"Error in handle_getpost: {str(e)}", exc_info=True)
+        await message.answer(f"⚠️ Произошла ошибка при создании поста. Попробуйте позже.")
 
-# Основная функция запуска бота
+# Тестовая команда для проверки изображений
+@dp.message(Command("test_image"))
+async def test_image(message: Message):
+    try:
+        url = random.choice(background_urls)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    await message.answer_photo(types.InputFile(BytesIO(await resp.read())))
+                else:
+                    await message.answer(f"Ошибка загрузки: HTTP {resp.status}")
+    except Exception as e:
+        await message.answer(f"Ошибка: {str(e)}")
+
+# Запуск бота
 async def main():
+    logger.info("Starting bot...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
