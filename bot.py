@@ -36,67 +36,38 @@ today = datetime.datetime.now().strftime('%A')
 today_topic = topics_by_day.get(today, 'Тема не задана')
 logger.info(f'Сегодня {today}, тема: {today_topic}')
 
-# Ссылки на фоновые изображения (замените на свои рабочие URL)
+# Ссылки на фоновые изображения (ЗАМЕНИТЕ НА РЕАЛЬНЫЕ ССЫЛКИ!)
 background_urls = [
-    "https://disk.yandex.ru/i/2Xm6oBM2Zwww9A",
-    "https://disk.yandex.ru/i/95YgmR-nwVl0aA",
-    "https://disk.yandex.ru/i/wfxrh1dGXVSZhA",
-    "https://disk.yandex.ru/i/eF8sPxfN7zK8_w",
-    "https://disk.yandex.ru/i/VwI1szpo2XD_Ng",
-    "https://disk.yandex.ru/i/WX4MUIc7OsAR5g",
-    "https://disk.yandex.ru/i/ClReyWAp8SbzeA",
-    "https://disk.yandex.ru/i/XYUEUflKtyKysw",
-    "https://disk.yandex.ru/i/tCL_01Yp3R7SQw",
-    "https://disk.yandex.ru/i/9HxrIVUhxrg9pQ",   
-    "https://disk.yandex.ru/i/-y-Rz_p9QGn8-g",
-    "https://disk.yandex.ru/i/kNNwbfINfEi3UQ",
-    "https://disk.yandex.ru/i/LSdlgoOYss3tIg",
-    "https://disk.yandex.ru/i/hZPj3OoIN_PI7w",
-    "https://disk.yandex.ru/i/P2OupYx_sEBmEQ",
-    "https://disk.yandex.ru/i/JSbEfkQK_ih5iQ",
-    "https://disk.yandex.ru/i/cs-lkHjf2rOQ9g",
-    "https://disk.yandex.ru/i/GrfCtYaAvOMR8w",
-    "https://disk.yandex.ru/i/xsE6Fstw8xoK_g",
-    "https://disk.yandex.ru/i/ZOqskY_okJaSNw",
-    "https://disk.yandex.ru/i/S3wox7U1o9yw6A",
-    "https://disk.yandex.ru/i/gnRc4lbGtrA7gA",
-    "https://disk.yandex.ru/i/pufipYa9RjPeTQ",
-    "https://disk.yandex.ru/i/XQbURiAllj0cVw",
-    "https://disk.yandex.ru/i/eKKHTF_vPlQblg",
-    "https://disk.yandex.ru/i/EYgQv2wNH7b85Q",
-    "https://disk.yandex.ru/i/lydkWdj7OMqEGw",
-    "https://disk.yandex.ru/i/fx9TQbZgTGZz5Q",
-    "https://disk.yandex.ru/i/QjkXiQ5G76chmQ",
-    "https://disk.yandex.ru/i/ZxHXV-K6fFTtKQ",
-    "https://disk.yandex.ru/i/JzKzVWa-ofCgRQ"
+    "https://example.com/image1.jpg",
+    "https://example.com/image2.jpg"
 ]
 
-# Загружаем токены из переменных окружения
+# Загружаем токены
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 if not BOT_TOKEN or not OPENROUTER_API_KEY:
-    raise ValueError("Не заданы обязательные переменные окружения!")
+    raise ValueError("Токены не заданы!")
 
-# Инициализация бота и диспетчера
+# Инициализация бота
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
-# Удаление эмодзи из текста
+# Удаление эмодзи
 def remove_emojis(text):
     emoji_pattern = re.compile(
         "["
-        "\U0001F600-\U0001F64F"  # emoticons
-        "\U0001F300-\U0001F5FF"  # symbols & pictographs
-        "\U0001F680-\U0001F6FF"  # transport & map symbols
-        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
-        "\U00002700-\U000027BF"  # Dingbats
+        "\U0001F600-\U0001F64F"
+        "\U0001F300-\U0001F5FF"
+        "\U0001F680-\U0001F6FF"
+        "\U0001F1E0-\U0001F1FF"
+        "\U00002700-\U000027BF"
         "]+",
         flags=re.UNICODE
     )
     return emoji_pattern.sub(r'', text)
 
-# Генерация текста поста через OpenRouter
+# Генерация поста
 async def generate_post(prompt_text):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -108,24 +79,18 @@ async def generate_post(prompt_text):
         "messages": [{"role": "user", "content": prompt_text}],
     }
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data['choices'][0]['message']['content']
-                error = await response.text()
-                logger.error(f"OpenRouter error: {error}")
-                raise Exception(f"Ошибка OpenRouter: {response.status}")
-    except Exception as e:
-        logger.error(f"Error in generate_post: {str(e)}", exc_info=True)
-        raise
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=payload) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data['choices'][0]['message']['content']
+            error = await response.text()
+            logger.error(f"OpenRouter error: {error}")
+            raise Exception(f"Ошибка OpenRouter: {response.status}")
 
-# Генерация изображения с текстом
+# Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        logger.info(f"Generating image with text: {headline[:30]}...")
-        
         output = replicate.run(
             "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
             input={
@@ -148,35 +113,27 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
                 raise Exception(f"Ошибка загрузки: {resp.status}")
                 
     except Exception as e:
-        logger.error(f"Error in generate_image_with_text: {str(e)}", exc_info=True)
+        logger.error(f"Ошибка генерации изображения: {str(e)}", exc_info=True)
         raise
 
-# Обработчик команды /getpost
+# Команда /getpost
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
     try:
-        # 1. Генерация текста поста
-        logger.info("Generating post text...")
-        post_text = await generate_post(f"Создай пост для Telegram на тему: {today_topic}. Пиши интересно и понятно.")
+        # Генерация текста
+        post_text = await generate_post(f"Создай пост на тему: {today_topic}")
         await message.answer(post_text)
 
-        # 2. Создание заголовка
-        logger.info("Generating headline...")
-        headline = await generate_post(
-            f"Придумай короткий (1-3 слова) броский заголовок для этого поста:\n\n{post_text}\n\n"
-            "Пиши только заголовок без кавычек и пояснений."
-        )
+        # Генерация заголовка
+        headline = await generate_post(f"Создай заголовок (1-3 слова) для: {post_text}")
         headline = remove_emojis(headline).strip('"').strip()
         await message.answer(f"<b>Заголовок:</b> {headline}")
 
-        # 3. Выбор случайного фона
+        # Выбор фона
         background_url = random.choice(background_urls)
-        logger.info(f"Selected background: {background_url}")
         
-        # 4. Генерация и отправка изображения
-        logger.info("Generating final image...")
+        # Создание изображения
         image_bytes = await generate_image_with_text(background_url, headline)
-        
         try:
             await message.answer_photo(
                 types.InputFile(image_bytes, filename="post.jpg"),
@@ -186,31 +143,21 @@ async def handle_getpost(message: Message):
             image_bytes.close()
 
     except Exception as e:
-        logger.error(f"Error in handle_getpost: {str(e)}", exc_info=True)
-        await message.answer(f"⚠️ Произошла ошибка при создании поста. Попробуйте позже.")
+        logger.error(f"Ошибка: {str(e)}", exc_info=True)
+        await message.answer("⚠️ Ошибка при создании поста")
 
-# Тестовая команда для проверки изображений
-@dp.message(Command("test_image"))
-async def test_image(message: Message):
-    try:
-        url = random.choice(background_urls)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    await message.answer_photo(types.InputFile(BytesIO(await resp.read())))
-                else:
-                    await message.answer(f"Ошибка загрузки: HTTP {resp.status}")
-    except Exception as e:
-        await message.answer(f"Ошибка: {str(e)}")
+# Команда /test
+@dp.message(Command("test"))
+async def test_cmd(message: Message):
+    await message.answer("✅ Бот работает!")
 
 # Запуск бота
-async def main():
-     logger.info("Starting bot...")
-    
-    # Удаляем старые webhooks (если были)
+async def on_startup():
     await bot.delete_webhook(drop_pending_updates=True)
-    
-    # Запускаем polling
+    logger.info("Бот запущен")
+
+async def main():
+    await on_startup()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
