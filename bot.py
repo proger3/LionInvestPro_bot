@@ -164,34 +164,66 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
     try:
+        # 1. Получаем текущую тему
         today = datetime.datetime.now().strftime('%A')
-        today_topic = topics_by_day.get(today, 'Тема не задана')
-        
-        # 1. Генерация текста
-        post_text = await generate_post(f"Создай пост на тему: {today_topic}")
-        await message.answer(post_text)
+        today_topic = topics_by_day.get(today, 'Общая тема')
+        logger.info(f"Создание поста по теме: {today_topic}")
 
-        # 2. Генерация заголовка
-        headline = await generate_post(f"Создай заголовок (1-3 слова) для: {post_text}")
-        headline = remove_emojis(headline).strip('"').strip()
-        await message.answer(f"<b>Заголовок:</b> {headline}")
-
-        # 3. Выбор фона
-        background_url = random.choice(background_urls)
-        
-        # 4. Создание изображения
-        image_bytes = await generate_image_with_text(background_url, headline)
+        # 2. Генерация текста поста
         try:
-            await message.answer_photo(
-                types.InputFile(image_bytes, filename="post.jpg"),
-                caption=headline
+            post_text = await asyncio.wait_for(
+                generate_post(f"Напиши пост для Telegram на тему '{today_topic}'. Формат: 1-2 абзаца."),
+                timeout=30
             )
-        finally:
-            image_bytes.close()
+            if not post_text.strip():
+                raise Exception("Пустой текст поста")
+            await message.answer(post_text)
+        except Exception as e:
+            raise Exception(f"Ошибка генерации текста: {str(e)}")
+
+        # 3. Создание заголовка
+        try:
+            headline = await asyncio.wait_for(
+                generate_post(f"Придумай короткий заголовок (2-4 слова) для этого поста:\n\n{post_text}"),
+                timeout=20
+            )
+            headline = remove_emojis(headline).strip('"').strip()
+            if not headline:
+                raise Exception("Не удалось создать заголовок")
+            await message.answer(f"<b>Заголовок:</b> {headline}")
+        except Exception as e:
+            raise Exception(f"Ошибка генерации заголовка: {str(e)}")
+
+        # 4. Выбор и проверка изображения
+        try:
+            bg_url = random.choice(background_urls)
+            logger.info(f"Выбрано фоновое изображение: {bg_url}")
+            
+            # 5. Генерация картинки
+            image_bytes = await asyncio.wait_for(
+                generate_image_with_text(bg_url, headline),
+                timeout=60
+            )
+            
+            if not image_bytes:
+                raise Exception("Не удалось сгенерировать изображение")
+
+            # 6. Отправка результата
+            try:
+                await message.answer_photo(
+                    types.InputFile(image_bytes, filename="post.jpg"),
+                    caption=headline
+                )
+            finally:
+                image_bytes.close()
+                
+        except Exception as e:
+            raise Exception(f"Ошибка работы с изображением: {str(e)}")
 
     except Exception as e:
-        logger.error(f"Ошибка: {str(e)}", exc_info=True)
-        await message.answer("⚠️ Ошибка при создании поста")
+        error_msg = f"⚠️ Ошибка при создании поста:\n{str(e)[:300]}"
+        logger.error(error_msg, exc_info=True)
+        await message.answer(error_msg)
 
 # Команда /test
 @dp.message(Command("test"))
