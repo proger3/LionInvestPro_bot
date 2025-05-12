@@ -91,31 +91,48 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        output = replicate.run(
+        logger.info(f"Starting image generation with URL: {image_url[:50]}...")
+        
+        # Проверяем, что ссылка валидная
+        if not image_url.startswith(('http://', 'https://')):
+            raise ValueError("Invalid image URL format")
+
+        output = await asyncio.to_thread(
+            replicate.run,
             "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
             input={
                 "image": image_url,
                 "prompt": headline,
                 "font": "Anton",
                 "text_color": "white",
-                "outline_color": "black"
+                "outline_color": "black",
+                "font_size": 60  # Добавим размер шрифта
             }
         )
         
+        # Получаем URL результата
         result_url = output if isinstance(output, str) else output.get("image", "")
         if not result_url:
             raise Exception("Replicate не вернул URL изображения")
+        
+        logger.info(f"Image generated at: {result_url[:50]}...")
 
-        async with aiohttp.ClientSession() as session:
+        # Загружаем изображение с таймаутом
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
             async with session.get(result_url) as resp:
-                if resp.status == 200:
-                    return BytesIO(await resp.read())
-                raise Exception(f"Ошибка загрузки: {resp.status}")
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    raise Exception(f"Ошибка загрузки изображения: {resp.status} {error_text}")
+                
+                image_data = await resp.read()
+                if not image_data:
+                    raise Exception("Получены пустые данные изображения")
+                
+                return BytesIO(image_data)
                 
     except Exception as e:
-        logger.error(f"Ошибка генерации изображения: {str(e)}", exc_info=True)
-        raise
-
+        logger.error(f"CRITICAL IMAGE ERROR: {str(e)}", exc_info=True)
+        raise Exception(f"Не удалось создать изображение: {str(e)}")
 # Команда /getpost
 @dp.message(Command("getpost"))
 async def handle_getpost(message: Message):
@@ -143,14 +160,38 @@ async def handle_getpost(message: Message):
             image_bytes.close()
 
     except Exception as e:
-        logger.error(f"Ошибка: {str(e)}", exc_info=True)
-        await message.answer("⚠️ Ошибка при создании поста")
+    logger.error(f"Ошибка: {str(e)}", exc_info=True)
+    await message.answer(f"⚠️ Ошибка при создании изображения:\n{str(e)[:200]}")
 
 # Команда /test
 @dp.message(Command("test"))
 async def test_cmd(message: Message):
     await message.answer("✅ Бот работает!")
 
+@dp.message(Command("test_images"))
+async def test_images(message: Message):
+    for url in background_urls:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    if resp.status == 200:
+                        await message.answer(f"✅ {url[:50]}... работает")
+                    else:
+                        await message.answer(f"❌ {url[:50]}... ошибка {resp.status}")
+        except Exception as e:
+            await message.answer(f"❌ {url[:50]}... ошибка: {str(e)}")
+
+@dp.message(Command("test_replicate"))
+async def test_replicate(message: Message):
+    try:
+        output = replicate.run(
+            "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
+            input={"image": "https://example.com/image.jpg", "prompt": "Test"}
+        )
+        await message.answer(f"Replicate работает: {str(output)[:100]}")
+    except Exception as e:
+        await message.answer(f"Replicate error: {str(e)}")
+        
 # Запуск бота
 async def on_startup():
     await bot.delete_webhook(drop_pending_updates=True)
