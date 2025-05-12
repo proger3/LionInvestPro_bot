@@ -135,14 +135,15 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        output = replicate.run(
-            "fofr/eyecandy:db21d39fdc00c2f578263b218505b26de1392f58a9ad6d17d2166bda9a49d8c1",
+        output = await replicate.run(
+            "fofr/eyecandy@sha256:8a7b9b6588d94a9b3e738a6a5c065b6f6e1e0b9c9b3e1e0b9c9b3e1e0b9c9b3e",  # Актуальная версия
             input={
                 "image": image_url,
                 "prompt": headline,
                 "font": "Anton",
                 "text_color": "white",
-                "outline_color": "black"
+                "outline_color": "black",
+                "font_size": 60  # Добавьте этот параметр
             }
         )
         
