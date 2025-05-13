@@ -173,7 +173,7 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
         raise Exception(f"Ошибка API: {e.message[:200]}")
     except Exception as e:
         logger.error(f"Full Error: {str(e)}", exc_info=True)
-        raise Exception("Не удалось создать изображение"))
+        raise Exception("Не удалось создать изображение")
 
 #Диагностика ошибки
 @dp.message(Command("debug_image"))
