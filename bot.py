@@ -174,6 +174,33 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     except Exception as e:
         logger.error(f"Full Error: {str(e)}", exc_info=True)
         raise Exception("Не удалось создать изображение"))
+
+#Диагностика ошибки
+@dp.message(Command("debug_image"))
+async def debug_image(message: Message):
+    """Тест генерации с детальным логом"""
+    try:
+        test_url = "https://i.ibb.co/bjDyM39N/1.png"
+        test_text = "Тест 123"
+        
+        # 1. Проверка модели
+        model_info = replicate.models.get("stability-ai/sdxl-lite")
+        await message.answer(f"🔄 Модель доступна: {model_info.description[:100]}...")
+        
+        # 2. Тест генерации
+        image_bytes = await generate_image_with_text(test_url, test_text)
+        
+        # 3. Проверка результата
+        if image_bytes:
+            await message.answer_photo(
+                types.InputFile(image_bytes, filename="debug.jpg"),
+                caption="✅ Изображение создано!"
+            )
+        else:
+            await message.answer("❌ Пустой результат")
+            
+    except Exception as e:
+        await message.answer(f"🔴 Ошибка:\n{str(e)}")
         
 @dp.message(Command("test_model"))
 async def test_model(message: Message):
