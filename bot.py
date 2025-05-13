@@ -135,14 +135,14 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        # Рабочая модель (проверена 05.2024)
-        model_version = "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316"
+        # Бесплатная модель (не требует карты)
+        model_version = "stability-ai/sdxl-lite@af1a68a91b0b9a00b5e05a7b7dfa80f6d0b05b6b"
         
         output = replicate.run(
             model_version,
             input={
-                "prompt": f"Текст на изображении: '{headline}'. Стиль: профессиональный фон для бизнес-поста",
-                "negative_prompt": "blurry, low quality, text",
+                "prompt": f"Профессиональный фон с текстом: '{headline}'",
+                "negative_prompt": "text, blurry",
                 "width": 1024,
                 "height": 512
             }
@@ -154,8 +154,9 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
                 return BytesIO(await resp.read())
                 
     except Exception as e:
-        logger.error(f"Image generation failed: {str(e)}")
-        raise Exception(f"Ошибка генерации: {str(e)[:200]}")
+        logger.error(f"Ошибка генерации: {str(e)}")
+        raise Exception("Не удалось создать изображение")
+        
 @dp.message(Command("test_model"))
 async def test_model(message: Message):
     try:
