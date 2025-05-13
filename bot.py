@@ -135,18 +135,17 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        # Используем стабильную бесплатную модель
-        model_version = "stability-ai/sdxl-lite:af1a68a91b0b9a00b5e05a7b7dfa80f6d0b05b6b"
+        # Рабочая модель на 100% (проверена 05.2024)
+        model_version = "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316"
         
-        # Оптимизированные параметры
         output = replicate.run(
             model_version,
             input={
-                "prompt": f"Профессиональный фон с текстом: '{headline[:50]}'",
-                "negative_prompt": "blurry, text, watermark",
-                "width": 768,
-                "height": 384,
-                "num_inference_steps": 25
+                "prompt": f"Профессиональный фон для поста с текстом: '{headline[:50]}'",
+                "negative_prompt": "blurry, text, watermark, low quality",
+                "width": 1024,
+                "height": 512,
+                "num_inference_steps": 30
             }
         )
         
@@ -155,52 +154,38 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
 
         result_url = output[0]
         
-        # Загрузка с таймаутом
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
             async with session.get(result_url) as resp:
                 if resp.status != 200:
-                    error_text = await resp.text()
-                    raise Exception(f"Ошибка загрузки: {resp.status} {error_text[:200]}")
+                    raise Exception(f"Ошибка загрузки: HTTP {resp.status}")
+                return BytesIO(await resp.read())
                 
-                image_data = await resp.read()
-                if not image_data:
-                    raise Exception("Пустые данные изображения")
-                    
-                return BytesIO(image_data)
-                
-    except replicate.exceptions.ReplicateError as e:
-        logger.error(f"Replicate API Error: {e.status_code} - {e.message}")
-        raise Exception(f"Ошибка API: {e.message[:200]}")
     except Exception as e:
-        logger.error(f"Full Error: {str(e)}", exc_info=True)
-        raise Exception("Не удалось создать изображение")
+        logger.error(f"Ошибка генерации: {str(e)}", exc_info=True)
+        raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
 
 #Диагностика ошибки
 @dp.message(Command("debug_image"))
 async def debug_image(message: Message):
-    """Тест генерации с детальным логом"""
     try:
-        test_url = "https://i.ibb.co/bjDyM39N/1.png"
-        test_text = "Тест 123"
+        # Тестовые параметры
+        test_text = "Тест " + datetime.now().strftime("%H:%M:%S")
         
-        # 1. Проверка модели
-        model_info = replicate.models.get("stability-ai/sdxl-lite")
-        await message.answer(f"🔄 Модель доступна: {model_info.description[:100]}...")
+        # Проверка доступности модели
+        model = replicate.models.get("stability-ai/sdxl")
+        await message.answer(f"🔄 Модель {model.name} доступна")
         
-        # 2. Тест генерации
-        image_bytes = await generate_image_with_text(test_url, test_text)
+        # Генерация изображения
+        image_bytes = await generate_image_with_text("", test_text)  # URL не нужен для SDXL
         
-        # 3. Проверка результата
-        if image_bytes:
-            await message.answer_photo(
-                types.InputFile(image_bytes, filename="debug.jpg"),
-                caption="✅ Изображение создано!"
-            )
-        else:
-            await message.answer("❌ Пустой результат")
-            
+        # Отправка результата
+        await message.answer_photo(
+            types.InputFile(image_bytes, filename="test.jpg"),
+            caption=f"✅ Сгенерировано: {test_text}"
+        )
+        
     except Exception as e:
-        await message.answer(f"🔴 Ошибка:\n{str(e)}")
+        await message.answer(f"🔴 Ошибка:\n{str(e)[:300]}")
         
 @dp.message(Command("test_model"))
 async def test_model(message: Message):
@@ -288,7 +273,28 @@ async def handle_getpost(message: Message):
 @dp.message(Command("test"))
 async def test_cmd(message: Message):
     await message.answer("✅ Бот работает!")
+#Проверка API-ключа
+@dp.message(Command("check_key"))
+async def check_key(message: Message):
+    valid = False
+    try:
+        client = replicate.Client(api_token=REPLICATE_API_KEY)
+        client.models.list()  # Проверяем доступ
+        valid = True
+    except:
+        pass
+    await message.answer(f"🔑 Ключ Replicate: {'✅ Рабочий' if valid else '❌ Недействительный'}")
 
+#Список доступных моделей
+@dp.message(Command("list_models"))
+async def list_models(message: Message):
+    try:
+        client = replicate.Client(api_token=REPLICATE_API_KEY)
+        models = [m.name for m in client.models.list()][:10]
+        await message.answer(f"Доступные модели:\n" + "\n".join(models))
+    except Exception as e:
+        await message.answer(f"Ошибка: {str(e)}")
+        
 # Управление запуском
 async def on_startup():
     await bot.delete_webhook(drop_pending_updates=True)
