@@ -135,27 +135,45 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        # Бесплатная модель (не требует карты)
-        model_version = "stability-ai/sdxl-lite@af1a68a91b0b9a00b5e05a7b7dfa80f6d0b05b6b"
+        # Используем стабильную бесплатную модель
+        model_version = "stability-ai/sdxl-lite:af1a68a91b0b9a00b5e05a7b7dfa80f6d0b05b6b"
         
+        # Оптимизированные параметры
         output = replicate.run(
             model_version,
             input={
-                "prompt": f"Профессиональный фон с текстом: '{headline}'",
-                "negative_prompt": "text, blurry",
-                "width": 1024,
-                "height": 512
+                "prompt": f"Профессиональный фон с текстом: '{headline[:50]}'",
+                "negative_prompt": "blurry, text, watermark",
+                "width": 768,
+                "height": 384,
+                "num_inference_steps": 25
             }
         )
         
-        result_url = output[0]  # SDXL возвращает список ссылок
-        async with aiohttp.ClientSession() as session:
+        if not output:
+            raise Exception("Replicate не вернул изображение")
+
+        result_url = output[0]
+        
+        # Загрузка с таймаутом
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
             async with session.get(result_url) as resp:
-                return BytesIO(await resp.read())
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    raise Exception(f"Ошибка загрузки: {resp.status} {error_text[:200]}")
                 
+                image_data = await resp.read()
+                if not image_data:
+                    raise Exception("Пустые данные изображения")
+                    
+                return BytesIO(image_data)
+                
+    except replicate.exceptions.ReplicateError as e:
+        logger.error(f"Replicate API Error: {e.status_code} - {e.message}")
+        raise Exception(f"Ошибка API: {e.message[:200]}")
     except Exception as e:
-        logger.error(f"Ошибка генерации: {str(e)}")
-        raise Exception("Не удалось создать изображение")
+        logger.error(f"Full Error: {str(e)}", exc_info=True)
+        raise Exception("Не удалось создать изображение"))
         
 @dp.message(Command("test_model"))
 async def test_model(message: Message):
