@@ -334,48 +334,75 @@ async def on_shutdown():
     finally:
         logger.info("Бот завершил работу")
 
-async def main():
-    """Основной цикл работы бота с полной инициализацией"""
+async def init_services():
+    """Инициализация всех сторонних сервисов"""
     try:
-        # 1. Принудительная очистка предыдущих сессий
-        try:
-            if bot.session and not bot.session.closed:
-                await bot.session.close()
-                logger.info("Старая сессия бота закрыта")
-        except Exception as e:
-            logger.error(f"Ошибка закрытия сессии: {str(e)}")
+        # Пример инициализации Redis (если используете)
+        # redis = await aioredis.create_redis_pool()
+        # logger.info("Redis подключен")
+        
+        # Проверка доступности Replicate API
+        if REPLICATE_API_KEY:
+            client = replicate.Client(api_token=REPLICATE_API_KEY)
+            await asyncio.to_thread(client.models.list, limit=1)
+            logger.info("Replicate API доступен")
+        
+        logger.info("Все сервисы инициализированы")
+        return True
+    except Exception as e:
+        logger.critical(f"Ошибка инициализации сервисов: {str(e)}", exc_info=True)
+        raise
 
-        # 2. Ожидание для Render (избегаем конфликтов)
-        await asyncio.sleep(5)
-        logger.info("Ожидание завершено")
-
-        # 3. Очистка вебхуков (если были)
-        try:
-            await bot.delete_webhook(drop_pending_updates=True)
-            logger.info("Вебхуки сброшены")
-        except Exception as e:
-            logger.error(f"Ошибка очистки вебхуков: {str(e)}")
-            raise
-
-        # 4. Инициализация сервисов
-        await init_services()  # Ваши кастомные инициализации
-
-        # 5. Запуск поллинга с обработкой ошибок
+async def shutdown():
+    """Корректное завершение всех подключений"""
+    try:
+        tasks = []
+        
+        # Закрытие сессии бота
+        if hasattr(bot, 'session'):
+            tasks.append(bot.session.close())
+        
+        # Закрытие хранилища диспетчера
+        if hasattr(dp, 'storage'):
+            tasks.append(dp.storage.close())
+        
+        # Другие подключения (например Redis)
+        # if 'redis' in globals():
+        #     tasks.append(redis.close())
+        
+        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info("Все сервисы корректно остановлены")
+    except Exception as e:
+        logger.error(f"Ошибка при завершении работы: {str(e)}", exc_info=True)
+        
+async def main():
+    """Основной цикл работы бота"""
+    try:
+        # 1. Принудительная очистка
+        if hasattr(bot, 'session'):
+            await bot.session.close()
+            await asyncio.sleep(3)  # Для Render
+        
+        # 2. Очистка вебхуков
+        await bot.delete_webhook(drop_pending_updates=True)
+        
+        # 3. Инициализация сервисов
+        await init_services()
+        
+        # 4. Запуск бота
         logger.info("Запускаем поллинг...")
         await dp.start_polling(
             bot,
             allowed_updates=dp.resolve_used_update_types(),
-            close_bot_session=True
+            close_bot_session=False  # Теперь закрываем вручную в shutdown()
         )
-
+        
     except asyncio.CancelledError:
-        logger.info("Поллинг отменён")
+        logger.info("Поллинг отменен")
     except Exception as e:
         logger.critical(f"Критическая ошибка: {str(e)}", exc_info=True)
     finally:
-        # 6. Гарантированная очистка ресурсов
         await shutdown()
-        logger.info("Бот завершил работу")
         
 if __name__ == "__main__":
     try:
