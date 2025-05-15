@@ -163,7 +163,25 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     except Exception as e:
         logger.error(f"Ошибка генерации: {str(e)}", exc_info=True)
         raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
-
+#Провекра ключа Replicate
+@dp.message(Command("validate_key"))
+async def validate_key(message: Message):
+    try:
+        # Проверяем ключ через реальный запрос
+        client = replicate.Client(api_token=REPLICATE_API_KEY)
+        models = client.models.list(limit=1)
+        
+        if models:
+            await message.answer("✅ Ключ действителен! Доступные модели:")
+            for model in models[:3]:
+                await message.answer(f"- {model.name}")
+        else:
+            await message.answer("⚠️ Ключ работает, но нет доступа к моделям")
+            
+    except Exception as e:
+        await message.answer(f"❌ Недействительный ключ: {str(e)}")
+        logger.error(f"Invalid Replicate key: {REPLICATE_API_KEY[:5]}...")
+        
 #Диагностика ошибки
 @dp.message(Command("debug_image"))
 async def debug_image(message: Message):
