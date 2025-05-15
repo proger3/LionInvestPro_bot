@@ -335,25 +335,47 @@ async def on_shutdown():
         logger.info("Бот завершил работу")
 
 async def main():
-    """Основной цикл бота"""
+    """Основной цикл работы бота с полной инициализацией"""
     try:
-        # Для Render: ждем завершения старых процессов
-        await asyncio.sleep(2)
-        
-        # Очистка предыдущих вебхуков
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Вебхуки очищены")
-        
-        # Запуск поллинга
+        # 1. Принудительная очистка предыдущих сессий
+        try:
+            if bot.session and not bot.session.closed:
+                await bot.session.close()
+                logger.info("Старая сессия бота закрыта")
+        except Exception as e:
+            logger.error(f"Ошибка закрытия сессии: {str(e)}")
+
+        # 2. Ожидание для Render (избегаем конфликтов)
+        await asyncio.sleep(5)
+        logger.info("Ожидание завершено")
+
+        # 3. Очистка вебхуков (если были)
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("Вебхуки сброшены")
+        except Exception as e:
+            logger.error(f"Ошибка очистки вебхуков: {str(e)}")
+            raise
+
+        # 4. Инициализация сервисов
+        await init_services()  # Ваши кастомные инициализации
+
+        # 5. Запуск поллинга с обработкой ошибок
         logger.info("Запускаем поллинг...")
-        await dp.start_polling(bot)
-        
+        await dp.start_polling(
+            bot,
+            allowed_updates=dp.resolve_used_update_types(),
+            close_bot_session=True
+        )
+
     except asyncio.CancelledError:
         logger.info("Поллинг отменён")
     except Exception as e:
         logger.critical(f"Критическая ошибка: {str(e)}", exc_info=True)
     finally:
-        await on_shutdown()
+        # 6. Гарантированная очистка ресурсов
+        await shutdown()
+        logger.info("Бот завершил работу")
         
 if __name__ == "__main__":
     try:
