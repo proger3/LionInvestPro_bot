@@ -136,17 +136,16 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     try:
-        # Рабочая модель на 100% (проверена 05.2024)
-        model_version = "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316"
+        # Явно создаем клиент с ключом
+        client = replicate.Client(api_token=REPLICATE_API_KEY)
         
-        output = replicate.run(
-            model_version,
+        output = client.run(
+            "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316",
             input={
-                "prompt": f"Профессиональный фон для поста с текстом: '{headline[:50]}'",
-                "negative_prompt": "blurry, text, watermark, low quality",
+                "prompt": f"Профессиональный фон с текстом: '{headline[:50]}'",
+                "negative_prompt": "blurry, text, watermark",
                 "width": 1024,
-                "height": 512,
-                "num_inference_steps": 30
+                "height": 512
             }
         )
         
@@ -155,16 +154,16 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
 
         result_url = output[0]
         
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+        async with aiohttp.ClientSession() as session:
             async with session.get(result_url) as resp:
                 if resp.status != 200:
                     raise Exception(f"Ошибка загрузки: HTTP {resp.status}")
                 return BytesIO(await resp.read())
                 
     except Exception as e:
-        logger.error(f"Ошибка генерации: {str(e)}", exc_info=True)
-        raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
-
+        logger.error(f"Replicate Error: {str(e)}")
+        raise Exception(f"Ошибка API: {str(e)[:200]}")
+        
 #Проверка Replicate
 @dp.message(Command("check_replicate"))
 async def check_replicate(message: Message):
