@@ -356,8 +356,6 @@ async def on_shutdown():
         logger.info("Бот завершил работу")
 
 async def init_services():
-    """Инициализация всех сторонних сервисов"""
-   async def init_services():
     """Инициализация и проверка всех зависимостей"""
     try:
         # Проверка наличия ключей
@@ -367,7 +365,7 @@ async def init_services():
         # Создаем синхронный клиент для проверки
         client = replicate.Client(api_token=REPLICATE_API_KEY)
         
-        # Правильный способ получить модели (без limit)
+        # Получаем список моделей
         try:
             models = list(client.models.list())
             if not models:
@@ -380,7 +378,7 @@ async def init_services():
     except Exception as e:
         logger.critical(f"Сервисы не инициализированы: {str(e)}", exc_info=True)
         raise
-
+        
 async def shutdown():
     """Корректное завершение всех подключений"""
     try:
