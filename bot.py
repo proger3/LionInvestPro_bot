@@ -15,8 +15,12 @@ import re
 from functools import lru_cache
 from dotenv import load_dotenv
 from aiogram import __version__ as aiogram_version
-from replicate import __version__ as replicate_version
+#from replicate import __version__ as replicate_version
 from importlib.metadata import version  # Для получения версий
+try:
+    replicate_version = version('replicate')
+except:
+    replicate_version = "unknown"
 
 load_dotenv()
 
