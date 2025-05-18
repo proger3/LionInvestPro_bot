@@ -13,6 +13,8 @@ from aiogram.filters import Command
 import re
 # Кэшируем результаты проверки
 from functools import lru_cache
+from dotenv import load_dotenv
+load_dotenv()
 
 @lru_cache(maxsize=32)
 async def get_image(url: str) -> bytes:
