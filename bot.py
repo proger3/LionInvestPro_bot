@@ -163,6 +163,16 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     except Exception as e:
         logger.error(f"Replicate Error: {str(e)}")
         raise Exception(f"Ошибка API: {str(e)[:200]}")
+
+#Проверка ключа
+@dp.message(Command("check_key"))
+async def check_key(message: Message):
+    try:
+        client = replicate.Client(api_token=REPLICATE_API_KEY)
+        models = client.models.list()
+        await message.answer(f"✅ Ключ действителен! Доступно моделей: {len(list(models))}")
+    except Exception as e:
+        await message.answer(f"❌ Ошибка ключа: {str(e)}")
         
 #Проверка Replicate
 @dp.message(Command("check_replicate"))
