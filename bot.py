@@ -182,8 +182,8 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
 @dp.message(Command("versions"))
 async def show_versions(message: Message):
     versions = {
-        "Aiogram": AIOGRAM_VERSION,
-        "Replicate": REPLICATE_VERSION,
+        "Aiogram": version('aiogram'),
+        "Replicate": version('replicate'),
         "Python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     }
     await message.answer("\n".join(f"{k}: {v}" for k,v in versions.items()))
