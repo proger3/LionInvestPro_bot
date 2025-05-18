@@ -148,18 +148,18 @@ async def generate_post(prompt_text):
             raise Exception(f"Ошибка OpenRouter: {response.status}")
 
 # Генерация изображения
-async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
+async def generate_image_with_text(headline: str) -> BytesIO:
     try:
-        # Явно создаем клиент с ключом
-        client = replicate.Client(api_token=REPLICATE_API_KEY)
+        # Бесплатная модель (не требует billing)
+        model = "stability-ai/sdxl-lite:af1a68a91b0b9a00b5e05a7b7dfa80f6d0b05b6b"
         
-        output = client.run(
-            "stability-ai/sdxl:c221b2b8ef527988fb59bf24a8b97c4561f1c671f73bd389f866bfb27c061316",
+        output = replicate.run(
+            model,
             input={
                 "prompt": f"Профессиональный фон с текстом: '{headline[:50]}'",
                 "negative_prompt": "blurry, text, watermark",
-                "width": 1024,
-                "height": 512
+                "width": 768,
+                "height": 384
             }
         )
         
@@ -235,7 +235,17 @@ async def validate_key(message: Message):
     except Exception as e:
         await message.answer(f"❌ Недействительный ключ: {str(e)}")
         logger.error(f"Invalid Replicate key: {REPLICATE_API_KEY[:5]}...")
-        
+
+#проверка доступных моделей
+@dp.message(Command("free_models"))
+async def list_free_models(message: Message):
+    free_models = [
+        "stability-ai/sdxl-lite",
+        "bytedance/sdxl-lightning",
+        "fofr/sdxl-emoji"  # Примеры бесплатных моделей
+    ]
+    await message.answer("Бесплатные модели:\n" + "\n".join(free_models))
+    
 #Диагностика ошибки
 @dp.message(Command("debug_image"))
 async def debug_image(message: Message):
