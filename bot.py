@@ -16,7 +16,8 @@ from functools import lru_cache
 from dotenv import load_dotenv
 from aiogram import __version__ as aiogram_version
 from replicate import __version__ as replicate_version
-    
+from importlib.metadata import version  # Для получения версий
+
 load_dotenv()
 
 @lru_cache(maxsize=32)
@@ -31,6 +32,10 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Получаем версии
+REPLICATE_VERSION = version('replicate')
+AIOGRAM_VERSION = version('aiogram')
 
 # Конфигурация
 REPLICATE_API_KEY = os.getenv("REPLICATE_API_KEY")
@@ -173,8 +178,8 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
 @dp.message(Command("versions"))
 async def show_versions(message: Message):
     versions = {
-        "Aiogram": aiogram_version,
-        "Replicate": replicate_version,
+        "Aiogram": AIOGRAM_VERSION,
+        "Replicate": REPLICATE_VERSION,
         "Python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     }
     await message.answer("\n".join(f"{k}: {v}" for k,v in versions.items()))
