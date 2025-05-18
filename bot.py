@@ -164,6 +164,26 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
     except Exception as e:
         logger.error(f"Ошибка генерации: {str(e)}", exc_info=True)
         raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
+
+#Проверка Replicate
+@dp.message(Command("check_replicate"))
+async def check_replicate(message: Message):
+    try:
+        client = replicate.Client(api_token=REPLICATE_API_KEY)
+        
+        # Получаем первую модель (без параметра limit)
+        models = list(client.models.list())
+        model = models[0] if models else None
+        
+        await message.answer(
+            f"Replicate Status:\n"
+            f"• Models available: {len(models)}\n"
+            f"• First model: {model.id if model else 'None'}\n"
+            f"• API Key: {REPLICATE_API_KEY[:5]}...{REPLICATE_API_KEY[-3:]}"
+        )
+    except Exception as e:
+        await message.answer(f"Replicate check failed: {str(e)}")
+
 #Провекра ключа Replicate
 @dp.message(Command("validate_key"))
 async def validate_key(message: Message):
@@ -337,21 +357,28 @@ async def on_shutdown():
 
 async def init_services():
     """Инициализация всех сторонних сервисов"""
+   async def init_services():
+    """Инициализация и проверка всех зависимостей"""
     try:
-        # Пример инициализации Redis (если используете)
-        # redis = await aioredis.create_redis_pool()
-        # logger.info("Redis подключен")
+        # Проверка наличия ключей
+        if not REPLICATE_API_KEY:
+            raise ValueError("REPLICATE_API_KEY не задан")
+
+        # Создаем синхронный клиент для проверки
+        client = replicate.Client(api_token=REPLICATE_API_KEY)
         
-        # Проверка доступности Replicate API
-        if REPLICATE_API_KEY:
-            client = replicate.Client(api_token=REPLICATE_API_KEY)
-            await asyncio.to_thread(client.models.list, limit=1)
-            logger.info("Replicate API доступен")
-        
-        logger.info("Все сервисы инициализированы")
-        return True
+        # Правильный способ получить модели (без limit)
+        try:
+            models = list(client.models.list())
+            if not models:
+                raise ConnectionError("Replicate не вернул модели")
+            logger.info(f"Replicate доступен. Первая модель: {models[0].id}")
+            return True
+        except Exception as e:
+            raise ConnectionError(f"Ошибка Replicate API: {str(e)}")
+
     except Exception as e:
-        logger.critical(f"Ошибка инициализации сервисов: {str(e)}", exc_info=True)
+        logger.critical(f"Сервисы не инициализированы: {str(e)}", exc_info=True)
         raise
 
 async def shutdown():
