@@ -14,6 +14,9 @@ import re
 # Кэшируем результаты проверки
 from functools import lru_cache
 from dotenv import load_dotenv
+from aiogram import __version__ as aiogram_version
+from replicate import __version__ as replicate_version
+    
 load_dotenv()
 
 @lru_cache(maxsize=32)
@@ -166,6 +169,16 @@ async def generate_image_with_text(image_url: str, headline: str) -> BytesIO:
         logger.error(f"Replicate Error: {str(e)}")
         raise Exception(f"Ошибка API: {str(e)[:200]}")
 
+#Проверка версий
+@dp.message(Command("versions"))
+async def show_versions(message: Message):
+    versions = {
+        "Aiogram": aiogram_version,
+        "Replicate": replicate_version,
+        "Python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    }
+    await message.answer("\n".join(f"{k}: {v}" for k,v in versions.items()))
+    
 #Проверка ключа
 @dp.message(Command("check_key"))
 async def check_key(message: Message):
