@@ -309,57 +309,43 @@ async def handle_getpost(message: Message):
         logger.info(f"Создание поста по теме: {today_topic}")
 
         # 2. Генерация текста поста
-        try:
-            post_text = await asyncio.wait_for(
-                generate_post(f"Напиши пост для Telegram на тему '{today_topic}'. Формат: 1-2 абзаца."),
-                timeout=30
-            )
-            if not post_text.strip():
-                raise Exception("Пустой текст поста")
-            await message.answer(post_text)
-        except Exception as e:
-            raise Exception(f"Ошибка генерации текста: {str(e)}")
+        post_text = await generate_post(
+            f"Напиши пост для Telegram на тему '{today_topic}'. Формат: 1-2 абзаца."
+        )
+        if not post_text.strip():
+            raise Exception("Пустой текст поста")
+        
+        await message.answer(post_text)
 
         # 3. Создание заголовка
-        try:
-            headline = await asyncio.wait_for(
-                generate_post(f"Придумай короткий заголовок (2-4 слова) для этого поста:\n\n{post_text}"),
-                timeout=20
-            )
-            headline = remove_emojis(headline).strip('"').strip()
-            if not headline:
-                raise Exception("Не удалось создать заголовок")
-            await message.answer(f"<b>Заголовок:</b> {headline}")
-        except Exception as e:
-            raise Exception(f"Ошибка генерации заголовка: {str(e)}")
+        headline = await generate_post(
+            f"Придумай короткий заголовок (2-4 слова) для этого поста:\n\n{post_text}"
+        )
+        headline = remove_emojis(headline).strip('"').strip()
+        if not headline:
+            raise Exception("Не удалось создать заголовок")
+        
+        await message.answer(f"<b>Заголовок:</b> {headline}")
 
-        # 4. Выбор и проверка изображения
-        try:
-            bg_url = random.choice(background_urls)
-            logger.info(f"Выбрано фоновое изображение: {bg_url}")
-            
-            # 5. Генерация картинки
-            image_bytes =    image_bytes = await generate_image_with_text(headline)
+        # 4. Генерация изображения
+        bg_url = random.choice(background_urls)
+        logger.info(f"Выбрано фоновое изображение: {bg_url}")
+        
+        image_bytes = await generate_image_with_text(bg_url, headline)
+        
+        if not image_bytes:
+            raise Exception("Не удалось сгенерировать изображение")
 
-             # Создаем BufferedInputFile из байтов
-            photo_file = BufferedInputFile(
-                file=image_bytes.getvalue(),  # Получаем байты из BytesIO
-                filename="post.jpg"
-            )
-            
-            if not image_bytes:
-                raise Exception("Не удалось сгенерировать изображение")
-
-            # 6. Отправка результата
-       await message.answer_photo(
+        # 5. Отправка результата
+        photo_file = BufferedInputFile(
+            file=image_bytes.getvalue(),
+            filename="post.jpg"
+        )
+        
+        await message.answer_photo(
             photo=photo_file,
             caption=headline
         )
-        
-    except Exception as e:
-        error_msg = f"⚠️ Ошибка при создании поста:\n{str(e)[:300]}"
-        logger.error(error_msg, exc_info=True)
-        await message.answer(error_msg)
 
     except Exception as e:
         error_msg = f"⚠️ Ошибка при создании поста:\n{str(e)[:300]}"
