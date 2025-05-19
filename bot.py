@@ -8,6 +8,7 @@ import replicate
 from io import BytesIO
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
+from aiogram.types import BufferedInputFile
 from aiogram.enums import ParseMode   
 from aiogram.filters import Command
 import re
@@ -344,25 +345,27 @@ async def handle_getpost(message: Message):
             logger.info(f"Выбрано фоновое изображение: {bg_url}")
             
             # 5. Генерация картинки
-            image_bytes = await asyncio.wait_for(
-                generate_image_with_text(bg_url, headline),
-                timeout=60
+            image_bytes =    image_bytes = await generate_image_with_text(headline)
+
+             # Создаем BufferedInputFile из байтов
+            photo_file = BufferedInputFile(
+                file=image_bytes.getvalue(),  # Получаем байты из BytesIO
+                filename="post.jpg"
             )
             
             if not image_bytes:
                 raise Exception("Не удалось сгенерировать изображение")
 
             # 6. Отправка результата
-            try:
-                await message.answer_photo(
-                    types.InputFile(image_bytes, filename="post.jpg"),
-                    caption=headline
-                )
-            finally:
-                image_bytes.close()
-                
-        except Exception as e:
-            raise Exception(f"Ошибка работы с изображением: {str(e)}")
+       await message.answer_photo(
+            photo=photo_file,
+            caption=headline
+        )
+        
+    except Exception as e:
+        error_msg = f"⚠️ Ошибка при создании поста:\n{str(e)[:300]}"
+        logger.error(error_msg, exc_info=True)
+        await message.answer(error_msg)
 
     except Exception as e:
         error_msg = f"⚠️ Ошибка при создании поста:\n{str(e)[:300]}"
