@@ -174,8 +174,12 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
             except:
                 font = ImageFont.load_default()
             
+            # Получаем размеры текста (современный способ)
+            left, top, right, bottom = draw.textbbox((0, 0), headline, font=font)
+            text_width = right - left
+            text_height = bottom - top
+            
             # Позиционируем текст по центру
-            text_width, text_height = draw.textsize(headline, font=font)
             x = (img.width - text_width) / 2
             y = (img.height - text_height) / 2
             
