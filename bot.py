@@ -71,37 +71,37 @@ topics_by_day = {
 
 # Ссылки на фоновые изображения (замените на свои рабочие URL)
 background_urls = [
-    "https://i.ibb.co/bjDyM39N/1.png"
-    "https://i.ibb.co/gbn4mq0L/2.png"
-    "https://i.ibb.co/dwr85Wvb/3.png"
-    "https://i.ibb.co/0pqTmWJ4/4.png"
-    "https://i.ibb.co/Xrt3N4Xx/5.png"
-    "https://i.ibb.co/NdCxnnQs/6.png"
-    "https://i.ibb.co/7dqm37hX/7.png"
-    "https://i.ibb.co/sdjjt4BL/8.png"
-    "https://i.ibb.co/C3Jwq9Kw/9.png"
-    "https://i.ibb.co/847ZNS07/10.png"
-    "https://i.ibb.co/35BQPfnP/11.png"
-    "https://i.ibb.co/Kp0XsJWH/12.png"
-    "https://i.ibb.co/PvWFp2Yv/13.png"
-    "https://i.ibb.co/jkWpPJ9R/14.png"
-    "https://i.ibb.co/v447B9Pd/14-31.png"
-    "https://i.ibb.co/Y7Ddhm0b/15.png"
-    "https://i.ibb.co/d0TwNPnN/16.png"
-    "https://i.ibb.co/XTrZ6PM/17.png"
-    "https://i.ibb.co/5hK7PD2Q/18.png"
-    "https://i.ibb.co/pjHxzxYt/19.png"
-    "https://i.ibb.co/jvNrckxz/20.png"
-    "https://i.ibb.co/RGCNgKGs/21.png"
-    "https://i.ibb.co/MDXX4m7g/22.png"
-    "https://i.ibb.co/fzf521M0/23.png"
-    "https://i.ibb.co/bwwffVg/24.png"
-    "https://i.ibb.co/bgxbpgDN/25.png"
-    "https://i.ibb.co/tT0b5cZp/26.png"
-    "https://i.ibb.co/fYB6RbXF/27.png"
-    "https://i.ibb.co/1f1wSTSh/28.png"
-    "https://i.ibb.co/r29pJ22q/29.png"
-    "https://i.ibb.co/1tLHk4jp/30.png"
+    "https://i.ibb.co/bjDyM39N/1.png",
+    "https://i.ibb.co/gbn4mq0L/2.png",
+    "https://i.ibb.co/dwr85Wvb/3.png",
+    "https://i.ibb.co/0pqTmWJ4/4.png",
+    "https://i.ibb.co/Xrt3N4Xx/5.png",
+    "https://i.ibb.co/NdCxnnQs/6.png",
+    "https://i.ibb.co/7dqm37hX/7.png",
+    "https://i.ibb.co/sdjjt4BL/8.png",
+    "https://i.ibb.co/C3Jwq9Kw/9.png",
+    "https://i.ibb.co/847ZNS07/10.png",
+    "https://i.ibb.co/35BQPfnP/11.png",
+    "https://i.ibb.co/Kp0XsJWH/12.png",
+    "https://i.ibb.co/PvWFp2Yv/13.png",
+    "https://i.ibb.co/jkWpPJ9R/14.png",
+    "https://i.ibb.co/v447B9Pd/14-31.png",
+    "https://i.ibb.co/Y7Ddhm0b/15.png",
+    "https://i.ibb.co/d0TwNPnN/16.png",
+    "https://i.ibb.co/XTrZ6PM/17.png",
+    "https://i.ibb.co/5hK7PD2Q/18.png",
+    "https://i.ibb.co/pjHxzxYt/19.png",
+    "https://i.ibb.co/jvNrckxz/20.png",
+    "https://i.ibb.co/RGCNgKGs/21.png",
+    "https://i.ibb.co/MDXX4m7g/22.png",
+    "https://i.ibb.co/fzf521M0/23.png",
+    "https://i.ibb.co/bwwffVg/24.png",
+    "https://i.ibb.co/bgxbpgDN/25.png",
+    "https://i.ibb.co/tT0b5cZp/26.png",
+    "https://i.ibb.co/fYB6RbXF/27.png",
+    "https://i.ibb.co/1f1wSTSh/28.png",
+    "https://i.ibb.co/r29pJ22q/29.png",
+    "https://i.ibb.co/1tLHk4jp/30.png",
 ]
 
 #Проверка правильности ссылки на фотку
@@ -154,50 +154,42 @@ async def generate_post(prompt_text):
 
 async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
     try:
-        # 1. Выбираем случайный фон
-        bg_url = random.choice(background_urls)
+        # Увеличим таймаут для загрузки (30 секунд)
+        timeout = aiohttp.ClientTimeout(total=30)
         
-        # 2. Загружаем изображение
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(bg_url) as resp:
                 if resp.status != 200:
-                    raise Exception(f"Ошибка загрузки фона: HTTP {resp.status}")
-                bg_data = await resp.read()
+                    raise Exception(f"Не удалось загрузить фон (HTTP {resp.status})")
                 
-        # 3. Создаем изображение с текстом
+                bg_data = await resp.read()
+
+        # Создаем изображение с текстом
         with Image.open(BytesIO(bg_data)) as img:
             draw = ImageDraw.Draw(img)
             
-            # Используем стандартный шрифт (можно заменить на свой)
+            # Используем шрифт (если нет arial.ttf, будет использован стандартный)
             try:
                 font = ImageFont.truetype("arial.ttf", 40)
             except:
                 font = ImageFont.load_default()
             
-            # Форматируем текст
-            wrapped_text = "\n".join(textwrap.wrap(headline, width=20))
-            
-            # Позиционируем по центру
-            text_width, text_height = draw.textsize(wrapped_text, font=font)
+            # Позиционируем текст по центру
+            text_width, text_height = draw.textsize(headline, font=font)
             x = (img.width - text_width) / 2
             y = (img.height - text_height) / 2
             
             # Рисуем текст
-            draw.text(
-                (x, y),
-                wrapped_text,
-                fill="white",
-                font=font
-            )
+            draw.text((x, y), headline, fill="white", font=font)
             
             # Сохраняем в буфер
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=85)
+            img.save(buf, format="JPEG", quality=90)
             buf.seek(0)
             return buf
             
     except Exception as e:
-        logger.error(f"Image generation error: {str(e)}")
+        logger.error(f"Ошибка генерации изображения: {str(e)}")
         raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
 
 #Проверка версий
