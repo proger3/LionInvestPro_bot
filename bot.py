@@ -148,35 +148,51 @@ async def generate_post(prompt_text):
             raise Exception(f"Ошибка OpenRouter: {response.status}")
 
 # Генерация изображения
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
+
 async def generate_image_with_text(headline: str) -> BytesIO:
     try:
-        # Бесплатная модель (не требует billing)
-        model = "stability-ai/sdxl-lite:af1a68a91b0b9a00b5e05a7b7dfa80f6d0b05b6b"
+        # 1. Выбираем случайный фон
+        bg_url = random.choice(background_urls)
         
-        output = replicate.run(
-            model,
-            input={
-                "prompt": f"Профессиональный фон с текстом: '{headline[:50]}'",
-                "negative_prompt": "blurry, text, watermark",
-                "width": 768,
-                "height": 384
-            }
-        )
-        
-        if not output:
-            raise Exception("Replicate не вернул изображение")
-
-        result_url = output[0]
-        
+        # 2. Загружаем изображение
         async with aiohttp.ClientSession() as session:
-            async with session.get(result_url) as resp:
+            async with session.get(bg_url) as resp:
                 if resp.status != 200:
-                    raise Exception(f"Ошибка загрузки: HTTP {resp.status}")
-                return BytesIO(await resp.read())
+                    raise Exception(f"Ошибка загрузки фона")
                 
+                bg_data = await resp.read()
+                
+        # 3. Обрабатываем изображение
+        with Image.open(BytesIO(bg_data)) as img:
+            draw = ImageDraw.Draw(img)
+            
+            # Простой шрифт (можете заменить на свой)
+            try:
+                font = ImageFont.truetype("arial.ttf", 40)
+            except:
+                font = ImageFont.load_default()
+            
+            # Позиционирование текста
+            text = "\n".join(textwrap.wrap(headline, width=30))
+            draw.text(
+                (img.width//2, img.height//2),
+                text,
+                fill="white",
+                font=font,
+                anchor="mm"
+            )
+            
+            # Сохраняем в буфер
+            buf = BytesIO()
+            img.save(buf, format="JPEG")
+            buf.seek(0)
+            return buf
+            
     except Exception as e:
-        logger.error(f"Replicate Error: {str(e)}")
-        raise Exception(f"Ошибка API: {str(e)[:200]}")
+        logger.error(f"Image Error: {str(e)}")
+        raise Exception(f"Ошибка создания изображения")
 
 #Проверка версий
 @dp.message(Command("versions"))
