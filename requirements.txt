@@ -5,3 +5,4 @@ python-dotenv==1.0.0
 replicate==0.34.2
 aiohttp==3.9.1
 importlib-metadata==6.8.0  # Для version()
+Pillow>=10.0.0
