@@ -152,44 +152,38 @@ async def generate_post(prompt_text):
             raise Exception(f"Ошибка OpenRouter: {response.status}")
 
 # Генерация изображения
-
-async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
+async def generate_image_with_text(headline: str) -> BytesIO:
     try:
-        # Увеличим таймаут для загрузки (30 секунд)
-        timeout = aiohttp.ClientTimeout(total=30)
+        bg_url = random.choice(background_urls)
         
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with aiohttp.ClientSession() as session:
             async with session.get(bg_url) as resp:
                 if resp.status != 200:
-                    raise Exception(f"Не удалось загрузить фон (HTTP {resp.status})")
-                
+                    raise Exception(f"Ошибка загрузки фона: HTTP {resp.status}")
                 bg_data = await resp.read()
 
-        # Создаем изображение с текстом
         with Image.open(BytesIO(bg_data)) as img:
             draw = ImageDraw.Draw(img)
             
-            # Используем шрифт (если нет arial.ttf, будет использован стандартный)
+            # Шрифт и текст
             try:
                 font = ImageFont.truetype("arial.ttf", 40)
             except:
                 font = ImageFont.load_default()
             
-            # Получаем размеры текста (современный способ)
-            left, top, right, bottom = draw.textbbox((0, 0), headline, font=font)
-            text_width = right - left
-            text_height = bottom - top
+            # Современный способ расчета размера текста
+            bbox = draw.textbbox((0, 0), headline, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
             
-            # Позиционируем текст по центру
+            # Позиционирование по центру
             x = (img.width - text_width) / 2
             y = (img.height - text_height) / 2
             
-            # Рисуем текст
             draw.text((x, y), headline, fill="white", font=font)
             
-            # Сохраняем в буфер
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=90)
+            img.save(buf, format="JPEG", quality=85)
             buf.seek(0)
             return buf
             
