@@ -17,6 +17,9 @@ from dotenv import load_dotenv
 from aiogram import __version__ as aiogram_version
 #from replicate import __version__ as replicate_version
 from importlib.metadata import version  # Для получения версий
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
+
 try:
     replicate_version = version('replicate')
 except:
@@ -148,8 +151,6 @@ async def generate_post(prompt_text):
             raise Exception(f"Ошибка OpenRouter: {response.status}")
 
 # Генерация изображения
-from PIL import Image, ImageDraw, ImageFont
-import textwrap
 
 async def generate_image_with_text(headline: str) -> BytesIO:
     try:
@@ -160,39 +161,44 @@ async def generate_image_with_text(headline: str) -> BytesIO:
         async with aiohttp.ClientSession() as session:
             async with session.get(bg_url) as resp:
                 if resp.status != 200:
-                    raise Exception(f"Ошибка загрузки фона")
-                
+                    raise Exception(f"Ошибка загрузки фона: HTTP {resp.status}")
                 bg_data = await resp.read()
                 
-        # 3. Обрабатываем изображение
+        # 3. Создаем изображение с текстом
         with Image.open(BytesIO(bg_data)) as img:
             draw = ImageDraw.Draw(img)
             
-            # Простой шрифт (можете заменить на свой)
+            # Используем стандартный шрифт (можно заменить на свой)
             try:
                 font = ImageFont.truetype("arial.ttf", 40)
             except:
                 font = ImageFont.load_default()
             
-            # Позиционирование текста
-            text = "\n".join(textwrap.wrap(headline, width=30))
+            # Форматируем текст
+            wrapped_text = "\n".join(textwrap.wrap(headline, width=20))
+            
+            # Позиционируем по центру
+            text_width, text_height = draw.textsize(wrapped_text, font=font)
+            x = (img.width - text_width) / 2
+            y = (img.height - text_height) / 2
+            
+            # Рисуем текст
             draw.text(
-                (img.width//2, img.height//2),
-                text,
+                (x, y),
+                wrapped_text,
                 fill="white",
-                font=font,
-                anchor="mm"
+                font=font
             )
             
             # Сохраняем в буфер
             buf = BytesIO()
-            img.save(buf, format="JPEG")
+            img.save(buf, format="JPEG", quality=85)
             buf.seek(0)
             return buf
             
     except Exception as e:
-        logger.error(f"Image Error: {str(e)}")
-        raise Exception(f"Ошибка создания изображения")
+        logger.error(f"Image generation error: {str(e)}")
+        raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
 
 #Проверка версий
 @dp.message(Command("versions"))
