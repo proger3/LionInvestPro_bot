@@ -152,10 +152,8 @@ async def generate_post(prompt_text):
             raise Exception(f"Ошибка OpenRouter: {response.status}")
 
 # Генерация изображения
-async def generate_image_with_text(headline: str, headline: str) -> BytesIO:
+async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
     try:
-        bg_url = random.choice(background_urls)
-        
         async with aiohttp.ClientSession() as session:
             async with session.get(bg_url) as resp:
                 if resp.status != 200:
