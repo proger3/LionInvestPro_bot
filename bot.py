@@ -152,7 +152,7 @@ async def generate_post(prompt_text):
 
 # Генерация изображения
 
-async def generate_image_with_text(headline: str) -> BytesIO:
+async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
     try:
         # 1. Выбираем случайный фон
         bg_url = random.choice(background_urls)
