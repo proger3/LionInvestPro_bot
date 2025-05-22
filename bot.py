@@ -361,7 +361,7 @@ async def handle_getpost(message: Message):
 
         # 2. Генерация текста поста
         post_text = await generate_post(
-            f"Напиши пост для Telegram на тему '{today_topic}'. Формат: 1-2 абзаца."
+            f"Напиши пост для начинающих инвестором для Telegram на тему '{today_topic}'. Формат: 1-2 абзаца."
         )
         if not post_text.strip():
             raise Exception("Пустой текст поста")
