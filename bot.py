@@ -167,17 +167,17 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
             # Попытка загрузить шрифт (с несколькими fallback вариантами)
             try:
                 try:
-                    font = ImageFont.truetype("arial.ttf", 40)
+                    font = ImageFont.truetype("arial.ttf", 74)
                 except:
                     try:
-                        font = ImageFont.truetype("arialbd.ttf", 40)
+                        font = ImageFont.truetype("arialbd.ttf", 74)
                     except:
                         try:
-                            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 40)
+                            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 74)
                         except:
                             # Используем стандартный шрифт большего размера
                             font = ImageFont.load_default()
-                            font.size = 40
+                            font.size = 74
             except Exception as e:
                 logger.warning(f"Ошибка загрузки шрифта: {str(e)}")
                 font = ImageFont.load_default()
