@@ -154,6 +154,7 @@ async def generate_post(prompt_text):
 # Генерация изображения
 async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
     try:
+        # Загрузка фона
         async with aiohttp.ClientSession() as session:
             async with session.get(bg_url) as resp:
                 if resp.status != 200:
@@ -163,14 +164,64 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
         with Image.open(BytesIO(bg_data)) as img:
             draw = ImageDraw.Draw(img)
             
-            # Шрифт и текст
+            # Попытка загрузить шрифт (с несколькими fallback вариантами)
             try:
-                font = ImageFont.truetype("arial.ttf", 40)
-            except:
+                try:
+                    font = ImageFont.truetype("arial.ttf", 40)
+                except:
+                    try:
+                        font = ImageFont.truetype("arialbd.ttf", 40)
+                    except:
+                        try:
+                            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 40)
+                        except:
+                            # Используем стандартный шрифт большего размера
+                            font = ImageFont.load_default()
+                            font.size = 40
+            except Exception as e:
+                logger.warning(f"Ошибка загрузки шрифта: {str(e)}")
                 font = ImageFont.load_default()
+                font.size = 40
+
+            # Автоматический выбор цвета текста (белый или черный в зависимости от фона)
+            bg_color = img.getpixel((img.width//2, img.height//2))
+            if isinstance(bg_color, tuple):
+                brightness = sum(bg_color[:3])/3
+                text_color = "black" if brightness > 127 else "white"
+            else:
+                text_color = "white"
+
+            # Добавляем обводку для лучшей читаемости
+            outline_color = "black" if text_color == "white" else "white"
             
-            # Современный способ расчета размера текста
-            bbox = draw.textbbox((0, 0), headline, font=font)
+            # Разбиваем текст на строки, чтобы он помещался в изображение
+            max_width = img.width * 0.8  # 80% ширины изображения
+            lines = []
+            current_line = ""
+            
+            for word in headline.split():
+                test_line = f"{current_line} {word}".strip()
+                bbox = draw.textbbox((0, 0), test_line, font=font)
+                test_width = bbox[2] - bbox[0]
+                
+                if test_width <= max_width:
+                    current_line = test_line
+                else:
+                    lines.append(current_line)
+                    current_line = word
+            
+            if current_line:
+                lines.append(current_line)
+            
+            # Объединяем строки (максимум 3 строки)
+            if len(lines) > 3:
+                lines = lines[:3]
+                lines[-1] = lines[-1][:30] + "..." if len(lines[-1]) > 30 else lines[-1]
+            
+            text = "\n".join(lines)
+            
+            # Рассчитываем размеры текста
+            bbox = draw.textbbox((0, 0), text, font=font, spacing=10)
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
             
@@ -178,15 +229,24 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
             x = (img.width - text_width) / 2
             y = (img.height - text_height) / 2
             
-            draw.text((x, y), headline, fill="white", font=font)
+            # Рисуем обводку (смещения во все стороны)
+            for x_offset in [-2, 0, 2]:
+                for y_offset in [-2, 0, 2]:
+                    if x_offset != 0 or y_offset != 0:
+                        draw.text((x + x_offset, y + y_offset), text, 
+                                 fill=outline_color, font=font, spacing=10)
             
+            # Основной текст
+            draw.text((x, y), text, fill=text_color, font=font, spacing=10)
+            
+            # Сохранение в буфер
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=85)
+            img.save(buf, format="JPEG", quality=90)
             buf.seek(0)
             return buf
             
     except Exception as e:
-        logger.error(f"Ошибка генерации изображения: {str(e)}")
+        logger.error(f"Ошибка генерации изображения: {str(e)}", exc_info=True)
         raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
 
 #Проверка версий
