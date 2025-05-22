@@ -164,27 +164,19 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
         with Image.open(BytesIO(bg_data)) as img:
             draw = ImageDraw.Draw(img)
             
-            # Размер шрифта 74
+            # Шрифт (размер 74, жирный)
             font_size = 74
-            
-            # Пытаемся загрузить жирный шрифт (Arial Bold или аналоги)
             try:
+                font = ImageFont.truetype("arialbd.ttf", font_size)  # Arial Bold
+            except:
                 try:
-                    font = ImageFont.truetype("arialbd.ttf", font_size)
+                    font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
                 except:
-                    try:
-                        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
-                    except:
-                        # Если шрифты не найдены, используем стандартный
-                        font = ImageFont.load_default()
-                        font.size = font_size
-            except Exception as e:
-                logger.warning(f"Ошибка загрузки шрифта: {str(e)}")
-                font = ImageFont.load_default()
-                font.size = font_size
+                    font = ImageFont.load_default()
+                    font.size = font_size
 
-            # Жёлтый цвет в RGB и чёрная обводка
-            text_color = (255, 255, 0)  # Жёлтый (R, G, B)
+            # Цвета
+            text_color = (255, 255, 0)  # Жёлтый (RGB)
             outline_color = (0, 0, 0)   # Чёрная обводка
 
             # Разбиваем текст на строки
@@ -210,24 +202,36 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
             if len(lines) > 3:
                 lines = lines[:3]
                 lines[-1] = lines[-1][:20] + "..." if len(lines[-1]) > 20 else lines[-1]
+
+            # Межстрочный интервал
+            line_spacing = 20
             
-            text = "\n".join(lines)
+            # Вычисляем общую высоту текстового блока
+            total_text_height = sum(
+                draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1]
+                for line in lines
+            ) + (len(lines) - 1) * line_spacing
             
-            # Рассчитываем позицию текста
-            bbox = draw.textbbox((0, 0), text, font=font, spacing=20)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            x = (img.width - text_width) / 2
-            y = (img.height - text_height) / 2
-            
-            # Рисуем обводку (меньше смещений, чтобы не перекрывать текст)
-            for x_offset, y_offset in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
-                draw.text((x + x_offset, y + y_offset), text, 
-                         fill=outline_color, font=font, spacing=20)
-            
-            # Основной текст (гарантированно жёлтый)
-            draw.text((x, y), text, fill=text_color, font=font, spacing=20)
-            
+            # Стартовая позиция Y (центрируем весь блок)
+            y = (img.height - total_text_height) // 2
+
+            # Рисуем каждую строку по центру
+            for line in lines:
+                bbox = draw.textbbox((0, 0), line, font=font)
+                text_width = bbox[2] - bbox[0]
+                x = (img.width - text_width) // 2  # Центр по X
+                
+                # Обводка (4 направления)
+                for x_offset, y_offset in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
+                    draw.text((x + x_offset, y + y_offset), line, 
+                             fill=outline_color, font=font)
+                
+                # Основной текст (жёлтый)
+                draw.text((x, y), line, fill=text_color, font=font)
+                
+                # Смещаем Y для следующей строки
+                y += (bbox[3] - bbox[1]) + line_spacing
+
             # Сохраняем в буфер
             buf = BytesIO()
             img.save(buf, format="JPEG", quality=95)
@@ -237,7 +241,7 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
     except Exception as e:
         logger.error(f"Ошибка генерации изображения: {str(e)}", exc_info=True)
         raise Exception(f"Ошибка создания изображения: {str(e)[:200]}")
-
+        
 #Проверка версий
 @dp.message(Command("versions"))
 async def show_versions(message: Message):
