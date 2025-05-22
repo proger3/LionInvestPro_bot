@@ -164,38 +164,31 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
         with Image.open(BytesIO(bg_data)) as img:
             draw = ImageDraw.Draw(img)
             
-            # Попытка загрузить шрифт (с несколькими fallback вариантами)
+            # Размер шрифта 74
+            font_size = 74
+            
+            # Пытаемся загрузить жирный шрифт (Arial Bold или аналоги)
             try:
                 try:
-                    font = ImageFont.truetype("arial.ttf", 74)
+                    font = ImageFont.truetype("arialbd.ttf", font_size)
                 except:
                     try:
-                        font = ImageFont.truetype("arialbd.ttf", 74)
+                        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
                     except:
-                        try:
-                            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 74)
-                        except:
-                            # Используем стандартный шрифт большего размера
-                            font = ImageFont.load_default()
-                            font.size = 74
+                        # Если шрифты не найдены, используем стандартный
+                        font = ImageFont.load_default()
+                        font.size = font_size
             except Exception as e:
                 logger.warning(f"Ошибка загрузки шрифта: {str(e)}")
                 font = ImageFont.load_default()
-                font.size = 40
+                font.size = font_size
 
-            # Автоматический выбор цвета текста (белый или черный в зависимости от фона)
-            bg_color = img.getpixel((img.width//2, img.height//2))
-            if isinstance(bg_color, tuple):
-                brightness = sum(bg_color[:3])/3
-                text_color = "black" if brightness > 127 else "white"
-            else:
-                text_color = "white"
+            # Жёлтый цвет в RGB и чёрная обводка
+            text_color = (255, 255, 0)  # Жёлтый (R, G, B)
+            outline_color = (0, 0, 0)   # Чёрная обводка
 
-            # Добавляем обводку для лучшей читаемости
-            outline_color = "black" if text_color == "white" else "white"
-            
-            # Разбиваем текст на строки, чтобы он помещался в изображение
-            max_width = img.width * 0.8  # 80% ширины изображения
+            # Разбиваем текст на строки
+            max_width = img.width * 0.8
             lines = []
             current_line = ""
             
@@ -213,35 +206,31 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
             if current_line:
                 lines.append(current_line)
             
-            # Объединяем строки (максимум 3 строки)
+            # Ограничиваем до 3 строк
             if len(lines) > 3:
                 lines = lines[:3]
-                lines[-1] = lines[-1][:30] + "..." if len(lines[-1]) > 30 else lines[-1]
+                lines[-1] = lines[-1][:20] + "..." if len(lines[-1]) > 20 else lines[-1]
             
             text = "\n".join(lines)
             
-            # Рассчитываем размеры текста
-            bbox = draw.textbbox((0, 0), text, font=font, spacing=10)
+            # Рассчитываем позицию текста
+            bbox = draw.textbbox((0, 0), text, font=font, spacing=20)
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
-            
-            # Позиционирование по центру
             x = (img.width - text_width) / 2
             y = (img.height - text_height) / 2
             
-            # Рисуем обводку (смещения во все стороны)
-            for x_offset in [-2, 0, 2]:
-                for y_offset in [-2, 0, 2]:
-                    if x_offset != 0 or y_offset != 0:
-                        draw.text((x + x_offset, y + y_offset), text, 
-                                 fill=outline_color, font=font, spacing=10)
+            # Рисуем обводку (меньше смещений, чтобы не перекрывать текст)
+            for x_offset, y_offset in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
+                draw.text((x + x_offset, y + y_offset), text, 
+                         fill=outline_color, font=font, spacing=20)
             
-            # Основной текст
-            draw.text((x, y), text, fill=text_color, font=font, spacing=10)
+            # Основной текст (гарантированно жёлтый)
+            draw.text((x, y), text, fill=text_color, font=font, spacing=20)
             
-            # Сохранение в буфер
+            # Сохраняем в буфер
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=90)
+            img.save(buf, format="JPEG", quality=95)
             buf.seek(0)
             return buf
             
