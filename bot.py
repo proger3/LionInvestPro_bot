@@ -9,6 +9,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, BufferedInputFile
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
+from aiogram import Router
 from PIL import Image, ImageDraw, ImageFont
 import sqlite3
 from datetime import datetime, timedelta
@@ -24,6 +25,12 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("Не задан BOT_TOKEN!")
+
+# Создаем роутер после инициализации бота
+router = Router()
+
+# Затем подключаем роутер к диспетчеру
+dp.include_router(router)
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
@@ -208,52 +215,47 @@ async def check_scheduled_posts():
             
 
 # Команда /getpost
+# Теперь можно использовать декоратор @router
 @router.message(Command("getpost"))
 async def cmd_getpost(message: types.Message):
     try:
-        logger.info(f"Получена команда /getpost от {message.from_user.id}")
-        
-        # 1. Генерация контента
+        # 1. Генерация поста
         post_text = generate_investment_advice()
         bg_url = random.choice(background_urls)
-        logger.debug("Контент сгенерирован")
         
-        # 2. Создание изображения
+        # 2. Создаем изображение
         image_with_text = await generate_image_with_text(bg_url, post_text)
-        logger.debug("Изображение создано")
         
-        # 3. Отправка превью
+        # 3. Отправляем превью
         await message.answer_photo(
             types.BufferedInputFile(
                 image_with_text.getvalue(),
                 filename="preview.jpg"
             ),
-            caption=f"🔹 Превью поста (запланирован на завтра 9:00):\n\n{post_text}"
+            caption=f"🔹 Превью поста:\n\n{post_text}"
         )
         
-        # 4. Сохранение в БД
+        # 4. Сохраняем в БД для отложенной публикации
         scheduled_time = datetime.now().replace(
-            hour=9, minute=0, second=0, microsecond=0
+            hour=9, minute=0, second=0
         ) + timedelta(days=1)
         
         conn = sqlite3.connect("posts.db")
         try:
             cursor = conn.cursor()
             cursor.execute(
-                """INSERT INTO scheduled_posts 
-                (chat_id, post_text, image_data, scheduled_time) 
-                VALUES (?, ?, ?, ?)""",
+                "INSERT INTO scheduled_posts (chat_id, post_text, image_data, scheduled_time) VALUES (?, ?, ?, ?)",
                 (message.chat.id, post_text, image_with_text.getvalue(), scheduled_time)
             )
             conn.commit()
-            logger.info(f"Пост сохранён в БД, время публикации: {scheduled_time}")
             await message.answer("✅ Пост добавлен в план на завтра в 9:00!")
         finally:
             conn.close()
             
     except Exception as e:
-        logger.error(f"Ошибка в /getpost: {str(e)}", exc_info=True)
-        await message.answer("❌ Произошла ошибка. Мы уже работаем над исправлением!")
+        logger.error(f"Ошибка в /getpost: {e}", exc_info=True)
+        await message.answer("❌ Ошибка генерации поста. Попробуйте позже.")
+        
 # Периодическая проверка постов
 async def scheduler():
     while True:
