@@ -169,7 +169,6 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
 
 # Проверка запланированных постов
 async def check_scheduled_posts():
-    async def check_scheduled_posts():
     try:
         conn = sqlite3.connect("posts.db")
         cursor = conn.cursor()
