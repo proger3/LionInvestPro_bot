@@ -37,20 +37,27 @@ background_urls = [
 ]
 
 # Инициализация БД
+# Инициализация БД с логгированием
 def init_db():
-    conn = sqlite3.connect("posts.db")
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS scheduled_posts (
-            id INTEGER PRIMARY KEY,
-            chat_id INTEGER,
-            post_text TEXT,
-            image_data BLOB,
-            scheduled_time DATETIME
-        )
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect("posts.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scheduled_posts (
+                id INTEGER PRIMARY KEY,
+                chat_id INTEGER,
+                post_text TEXT,
+                image_data BLOB,
+                scheduled_time DATETIME
+            )
+        """)
+        conn.commit()
+        logger.info("База данных инициализирована")
+    except Exception as e:
+        logger.error(f"Ошибка инициализации БД: {e}")
+    finally:
+        conn.close()
+
 
 # Генерация совета по инвестициям
 def generate_investment_advice():
@@ -162,54 +169,103 @@ async def generate_image_with_text(bg_url: str, headline: str) -> BytesIO:
 
 # Проверка запланированных постов
 async def check_scheduled_posts():
-    conn = sqlite3.connect("posts.db")
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id, chat_id, post_text, image_data FROM scheduled_posts WHERE scheduled_time <= datetime('now')"
-    )
-    posts = cursor.fetchall()
-    
-    for post_id, chat_id, post_text, image_data in posts:
-        try:
-            await bot.send_photo(
-                chat_id=chat_id,
-                photo=BufferedInputFile(image_data, filename="post.jpg"),
-                caption=post_text
-            )
-            cursor.execute("DELETE FROM scheduled_posts WHERE id = ?", (post_id,))
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Ошибка отправки поста: {e}")
-    
-    conn.close()
+    async def check_scheduled_posts():
+    try:
+        conn = sqlite3.connect("posts.db")
+        cursor = conn.cursor()
+        
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logger.info(f"Проверка запланированных постов (текущее время: {now})")
+        
+        cursor.execute(
+            "SELECT id, chat_id, post_text, image_data FROM scheduled_posts WHERE scheduled_time <= datetime('now')"
+        )
+        posts = cursor.fetchall()
+        
+        if not posts:
+            logger.info("Нет постов для публикации")
+            return
+            
+        logger.info(f"Найдено {len(posts)} постов для публикации")
+        
+        for post_id, chat_id, post_text, image_data in posts:
+            try:
+                await bot.send_photo(
+                    chat_id=chat_id,
+                    photo=BufferedInputFile(image_data, filename="post.jpg"),
+                    caption=post_text
+                )
+                cursor.execute("DELETE FROM scheduled_posts WHERE id = ?", (post_id,))
+                conn.commit()
+                logger.info(f"Пост {post_id} опубликован в чате {chat_id}")
+            except Exception as e:
+                logger.error(f"Ошибка отправки поста {post_id}: {e}")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при проверке запланированных постов: {e}")
+    finally:
+        if conn:
+            conn.close()
+            
 
 # Команда /getpost
 @dp.message(Command("getpost"))
+@dp.message(Command("getpost"))
 async def cmd_getpost(message: Message):
     try:
+        # 1. Генерация поста
         post_text = generate_investment_advice()
         bg_url = await get_investment_background()
         image_with_text = await generate_image_with_text(bg_url, post_text)
         
+        # 2. Получаем данные изображения
+        image_data = image_with_text.getvalue()
+        if not image_data:
+            raise ValueError("Не удалось получить данные изображения")
+        
+        # 3. Сохраняем в БД
+        scheduled_time = (datetime.now() + timedelta(days=1)).replace(
+            hour=9, minute=0, second=0, microsecond=0
+        )
+        
+        conn = None
+        try:
+            conn = sqlite3.connect("posts.db")
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                """INSERT INTO scheduled_posts 
+                (chat_id, post_text, image_data, scheduled_time) 
+                VALUES (?, ?, ?, ?)""",
+                (message.chat.id, post_text, image_data, scheduled_time)
+            )
+            conn.commit()
+            logger.info(f"Пост сохранён в БД для публикации в {scheduled_time}")
+            
+            # Проверяем, что пост действительно добавился
+            cursor.execute("SELECT COUNT(*) FROM scheduled_posts WHERE chat_id = ?", (message.chat.id,))
+            count = cursor.fetchone()[0]
+            logger.info(f"Всего запланированных постов: {count}")
+            
+        except Exception as e:
+            logger.error(f"Ошибка при работе с БД: {e}")
+            await message.answer("❌ Ошибка при сохранении поста в базу данных")
+            return
+        finally:
+            if conn:
+                conn.close()
+        
+        # 4. Отправляем превью
         await message.answer_photo(
-            BufferedInputFile(image_with_text.getvalue(), filename="preview.jpg"),
-            caption=f"🔹 Превью поста (будет опубликован завтра в 9:00):\n\n{post_text}"
+            BufferedInputFile(image_data, filename="preview.jpg"),
+            caption=f"🔹 Превью поста (будет опубликован {scheduled_time.strftime('%d.%m.%Y в %H:%M')}):\n\n{post_text}"
         )
-        
-        scheduled_time = datetime.now().replace(
-            hour=9, minute=0, second=0
-        ) + timedelta(days=1)
-        
-        conn = sqlite3.connect("posts.db")
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO scheduled_posts (chat_id, post_text, image_data, scheduled_time) VALUES (?, ?, ?, ?)",
-            (message.chat.id, post_text, image_with_text.getvalue(), scheduled_time)
-        )
-        conn.commit()
-        conn.close()
         
         await message.answer("✅ Пост добавлен в план на завтра в 9:00!")
+        
+    except Exception as e:
+        logger.error(f"Ошибка в /getpost: {e}", exc_info=True)
+        await message.answer("❌ Ошибка генерации поста. Попробуйте позже.")    
         
     except Exception as e:
         logger.error(f"Ошибка в /getpost: {e}")
